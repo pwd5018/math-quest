@@ -1,10 +1,20 @@
-# Firebase integration handoff — not deployed
+# Firebase foundation and live-integration handoff
 
-The working product is local demo mode. **This repository has not created Firebase cloud resources, credentials, a parent account, a hosting deployment, a trusted child session or a live approval system.** `VITE_APP_MODE=firebase` displays a setup lock. Do not remove that guard until the gates below pass. Never migrate local demo balances into live money-like state as trusted data.
+The working product is local demo mode. **The Firebase web registration, default database, restrictive rules and email/password provider are configured; the application is not yet connected to live persistence.** No parent account, trusted child session, Hosting release or Cloud Function has been created/deployed by this work. `VITE_APP_MODE=firebase` displays a setup lock. Do not remove that guard until the gates below pass. Never migrate local demo balances into live money-like state as trusted data.
 
 ## Current setup — October 27, 2026
 
-The application is backed up on GitHub branch `codex/math-quest-firebase`. The owner selected existing project `math-quest-2d6e5`. A local, Git-ignored `.firebaserc` maps the explicit `development` alias to it; no default deployment target is set. No project or database was created by this repository. Existing cloud resources and billing remain unverified until the owner completes Firebase CLI sign-in.
+The application is backed up on GitHub branch `codex/math-quest-firebase`. The owner selected existing project `math-quest-2d6e5` and completed Firebase CLI sign-in. A local, Git-ignored `.firebaserc` maps the explicit `development` alias to it; no default deployment target is set.
+
+Verified cloud foundation:
+
+- Registered **Math Quest Web**, app ID `1:770154018698:web:4a5b061e001c581be4ba73`. Its public SDK fields are in ignored `.env.local`; `VITE_APP_MODE=demo` remains set. No Admin SDK key was downloaded or created, and Analytics is not initialized by the application.
+- Enabled Firestore and created the `(default)` **Standard / Native** database in **us-central1**, matching the backend scaffold. Firebase reports `freeTier: true`. Paid PITR/backup features were not enabled. No child profiles, balances or practice records were seeded in the cloud.
+- Deployed only `firestore:rules` and `auth`. Email/password sign-in is enabled with password required. No parent custom claims or users were provisioned. Authorized domains are the project's `firebaseapp.com` and `web.app` domains; localhost was not added to the live project.
+- Retrieved the released Firestore rules and compared their normalized source to the tested local file: exact match, SHA-256 `8152ba7c97777a1b3bda95ab6f505eb3a1c1f7e7fd3f42c48b314fdae71794fa`. An anonymous REST read using the registered public web API key returned **403 PERMISSION_DENIED — Missing or insufficient permissions**.
+- An existing Hosting site was found at `https://math-quest-2d6e5.web.app`; no site content was published or verified. Billing was checked and is **disabled**. No Cloud Functions deployment was attempted.
+
+Sanitized local verification evidence is in `artifacts/firebase-foundation-check.json` (ignored by Git). The production user/child authorization and concurrency flows remain unverified and unimplemented as described below.
 
 Run `npm.cmd exec firebase -- login` locally and complete Google's sign-in yourself. Never paste authorization codes, tokens or service-account JSON into chat or source control. After sign-in, inspect the selected project before changing it:
 
@@ -15,9 +25,9 @@ npm.cmd exec firebase -- firestore:databases:list --project math-quest-2d6e5
 npm.cmd exec firebase -- hosting:sites:list --project math-quest-2d6e5
 ```
 
-Next milestones: inspect existing resources and confirm database region/billing; configure the public web app and parent sign-in; implement the live data repository and trusted child-session lifecycle; migrate history to bounded subcollections and verify authoritative callable operations; then deploy and verify staging. The current backend scaffold must not be presented as a completed live database integration. Cloud Functions require the Blaze plan; enabling billing remains an owner decision.
+Next milestones: implement parent sign-in in the app and trusted child-session provisioning; implement the live repository; migrate history to bounded subcollections; test authenticated callable operations and replay/concurrency behavior with emulators; configure App Check and live CSP; then deploy and verify staging. The current backend scaffold must not be presented as a completed live database integration. Cloud Functions require the Blaze plan; enabling billing remains an owner decision. Repository code and emulator work can continue before enabling billing.
 
-The emulator scripts always specify `demo-math-quest`, independent of the local alias. On this setup pass all six rule tests passed after increasing the cold-start setup-hook timeout to 60 seconds. No deployed rules or live account permissions were changed.
+The emulator scripts always specify `demo-math-quest`, independent of the local alias. All six rule tests passed after increasing the cold-start setup-hook timeout to 60 seconds; the deployed rule source was verified against that tested file. This does not replace end-to-end parent/student authorization testing.
 
 ## What is prepared
 
@@ -60,7 +70,7 @@ The shared `State.appearance` contains only `outfit`, `accent`, `hat`, `glasses`
 
 ## Setup and security gates
 
-1. Create a Firebase project yourself; choose a region, enable parent Authentication (such as email/password) and Firestore in locked mode. Enable an appropriate App Check provider. Keep the console account and billing under parent control.
+1. Use the configured project/database/provider above, or create separate development/staging resources intentionally. Enable an appropriate App Check provider before callable integration. Keep the console account and billing under parent control.
 2. Provision parent custom claims only through a trusted Admin workflow after ownership is established: `{parent: true}`. No browser write, sign-up form role, nickname, public PIN, or mutable Firestore role flag may grant this claim.
 3. Implement and test real parent sign-in, sign-out and recent reauthentication for entry to parent tools. A student must use a distinct, restricted identity provisioned only after the authenticated parent approves a device/session. A trusted provisioning endpoint should issue `{student: true, parentUid, childId}` custom claims/token, with revocation, expiry and device management. Do not leave parent credentials or an active parent session available in the student view. **The provisioning endpoint and authenticated frontend are not implemented yet.**
 4. Replace demo persistence with a live repository adapter: server read subscription and callable commands only. Student bundles must not issue local awards. Strip server answer keys from active question responses. Connect App Check initialization before calling enforced functions. Add a parent-only savings/reward administration surface and a student-safe goal setter (the scaffold does not yet expose a goal command).
@@ -99,6 +109,6 @@ npx.cmd firebase deploy --only firestore:rules,functions --project YOUR_REAL_PRO
 # Then build/deploy the fully integrated, verified frontend separately.
 ```
 
-`YOUR_REAL_PROJECT_ID` is a placeholder, not a credential or configured project. Hosting the current demo must retain every demo disclosure. No deployment has been run or claimed.
+`YOUR_REAL_PROJECT_ID` is a generic placeholder; the currently selected project is documented above. Hosting the current demo must retain every demo disclosure. Only the foundation's Auth configuration and restrictive Firestore rules have been deployed. No Hosting release, Cloud Functions deployment or live application integration has been run or claimed.
 
 Official references: [Callable functions and auth context](https://firebase.google.com/docs/functions/callable), [Security rule conditions and authentication](https://firebase.google.com/docs/firestore/security/rules-conditions), [Custom claims](https://firebase.google.com/docs/auth/admin/custom-claims), [Functions runtime management](https://firebase.google.com/docs/functions/manage-functions), [Functions setup and billing](https://firebase.google.com/docs/functions/get-started), [Firebase pricing](https://firebase.google.com/pricing).

@@ -15,7 +15,7 @@ The local parent preview is explicitly insecure DEMO functionality. It is not pa
 - [x] Working demo parent learning evidence, inventory, approval/refund/fulfillment, ledger adjustments and learning goals.
 - [x] Firebase environment/configuration, restrictive access rules with emulator tests, compiled authoritative transaction scaffold and documented live-integration gates.
 - [x] Unit tests, typecheck, production and backend builds, desktop/tablet/mobile browser review. See VALIDATION.md for executed evidence.
-- [ ] Future live integration: real parent authentication, trusted child-device provisioning, scalable Firestore repository, authenticated callable concurrency/replay testing and actual Firebase deployment. These remain explicitly disabled and are not claimed complete.
+- [ ] Future live integration: parent authentication UI, trusted child-device provisioning, scalable Firestore repository, authenticated callable concurrency/replay testing and backend/frontend deployment. These remain explicitly disabled and are not claimed complete; the cloud foundation is recorded below.
 
 ## Multiplication focus and rotation follow-up
 
@@ -43,3 +43,13 @@ The local parent preview is explicitly insecure DEMO functionality. It is not pa
 - [x] Add a local, click-triggered squeak, saved voice preference and instant mute.
 - [x] Extend cosmetic migration and audio tests; review responsive and quiet-mode rendering.
 - [ ] Future physical-device performance profiling and human listening review.
+
+## Firebase cloud foundation — October 27, 2026
+
+- [x] Push reviewed application to `codex/math-quest-firebase` and verify remote commit.
+- [x] Verify owner CLI sign-in and inspect existing project `math-quest-2d6e5`.
+- [x] Register web app and save public SDK configuration outside Git with demo mode preserved.
+- [x] Create default Standard Firestore in us-central1; deploy tested restrictive rules and email/password provider configuration.
+- [x] Verify exact deployed rule source, anonymous access rejection, provider settings and disabled billing.
+- [ ] Implement authenticated frontend, trusted child provisioning, bounded live repository and callable integration tests before staging release.
+- [ ] Owner decision on Blaze billing before Cloud Functions deployment; no billing change has been made.
