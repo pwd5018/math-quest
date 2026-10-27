@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function parent(parentId) {
+      return request.auth != null && request.auth.uid == parentId
+        && request.auth.token.parent == true;
+    }
+    function child(parentId, childId) {
+      return request.auth != null && request.auth.token.parentUid == parentId
+        && request.auth.token.childId == childId && request.auth.token.student == true;
+    }
+    // Only trusted Admin SDK operations can write authoritative state.
+    match /families/{parentId}/children/{childId} {
+      allow get: if parent(parentId) || child(parentId, childId);
+      allow list: if parent(parentId);
+      allow write: if false;
+    }
+    // Server-only sessions contain answer keys. No parent or child client reads.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

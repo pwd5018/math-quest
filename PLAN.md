@@ -1,0 +1,45 @@
+# Math Quest implementation plan
+
+1. Foundation: React + TypeScript + Vite + Tailwind; deterministic question generation and validation; separate learning, economy, and persistence modules.
+2. Student vertical slice: illustrated adventure map, adaptive ten-question practice, worked hints/manipulatives, permanent stars/badges, earned coins, parent-approved treasure shop and demo redemption requests.
+3. Parent demo: independent accuracy, attempts and hints, skill evidence and practice history; reward inventory, atomic request/refund flow, reasoned coin adjustments, goals and daily earning limits.
+4. Firebase preparation: disabled-by-default integration boundary, parent Auth setup, deny-by-default Firestore rules, authoritative callable backend scaffold, environment template and deployment/security checklist.
+5. Validation: generated-problem and progression/economy tests, TypeScript, production build and browser review where supported.
+
+The local parent preview is explicitly insecure DEMO functionality. It is not parent authentication. Firebase mode must remain unavailable until real configuration, backend deployment and emulator security verification exist.
+
+## Milestone outcome
+
+- [x] Separate deterministic math, learning, economy and local persistence engines.
+- [x] Complete illustrated student map, ten-question practice, explanations, manipulatives, achievements and treasure requests.
+- [x] Working demo parent learning evidence, inventory, approval/refund/fulfillment, ledger adjustments and learning goals.
+- [x] Firebase environment/configuration, restrictive access rules with emulator tests, compiled authoritative transaction scaffold and documented live-integration gates.
+- [x] Unit tests, typecheck, production and backend builds, desktop/tablet/mobile browser review. See VALIDATION.md for executed evidence.
+- [ ] Future live integration: real parent authentication, trusted child-device provisioning, scalable Firestore repository, authenticated callable concurrency/replay testing and actual Firebase deployment. These remain explicitly disabled and are not claimed complete.
+
+## Multiplication focus and rotation follow-up
+
+- [x] Default to multiplication through 12 × 12, with parent-enabled optional trails.
+- [x] Parent-controlled focus, range, active skills and gentle/full-range mode; validated revisions and safe migration of existing saves.
+- [x] Freeze a plan and question per adventure; apply changes only to the next start.
+- [x] Deterministic coverage, commutative deduplication within ten questions, and delayed review of wrong/hinted facts.
+- [x] Share scheduling and revision logic with the disabled Firebase transaction scaffold; record question/session provenance.
+- [x] Unit, typecheck, build and browser verification, recorded in VALIDATION.md.
+
+## Pip, dress-up and motion follow-up
+
+- [x] Original SVG costumes, hats, accents and glasses, reflected across the app.
+- [x] Child-accessible dressing room, live/sticky previews, free choices and durable local preferences.
+- [x] Wandering/hopping map Pip, clickable special moves and correct-answer cheers visible on mobile.
+- [x] Gentle sky, tree, river, bird and butterfly motion; sunny, sunset and starlight themes.
+- [x] Playful/Calm/Still preferences, quick map pause/resume and device reduced-motion override.
+- [x] Cosmetic-only validation, legacy save recovery, regression checks and browser validation. Live Firebase remains disabled.
+
+## Storybook graphics and voice follow-up
+
+- [x] Redraw terrain, forest, mountains, buildings, shore and river while preserving bridge geography and Pip's east-bank route.
+- [x] Upgrade Pip shading, eyes, idle motion and articulated dance/wave interactions.
+- [x] Add illustrated rewards, ribbon medals, atmospheric lighting and dressing-room effects.
+- [x] Add a local, click-triggered squeak, saved voice preference and instant mute.
+- [x] Extend cosmetic migration and audio tests; review responsive and quiet-mode rendering.
+- [ ] Future physical-device performance profiling and human listening review.
