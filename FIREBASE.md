@@ -1,6 +1,23 @@
 # Firebase integration handoff — not deployed
 
-The working product is local demo mode. **No Firebase project, credentials, parent account, hosting deployment, trusted child session or live approval system has been created.** `VITE_APP_MODE=firebase` displays a setup lock. Do not remove that guard until the gates below pass. Never migrate local demo balances into live money-like state as trusted data.
+The working product is local demo mode. **This repository has not created Firebase cloud resources, credentials, a parent account, a hosting deployment, a trusted child session or a live approval system.** `VITE_APP_MODE=firebase` displays a setup lock. Do not remove that guard until the gates below pass. Never migrate local demo balances into live money-like state as trusted data.
+
+## Current setup — October 27, 2026
+
+The application is backed up on GitHub branch `codex/math-quest-firebase`. The owner selected existing project `math-quest-2d6e5`. A local, Git-ignored `.firebaserc` maps the explicit `development` alias to it; no default deployment target is set. No project or database was created by this repository. Existing cloud resources and billing remain unverified until the owner completes Firebase CLI sign-in.
+
+Run `npm.cmd exec firebase -- login` locally and complete Google's sign-in yourself. Never paste authorization codes, tokens or service-account JSON into chat or source control. After sign-in, inspect the selected project before changing it:
+
+```powershell
+npm.cmd exec firebase -- projects:list
+npm.cmd exec firebase -- apps:list WEB --project math-quest-2d6e5
+npm.cmd exec firebase -- firestore:databases:list --project math-quest-2d6e5
+npm.cmd exec firebase -- hosting:sites:list --project math-quest-2d6e5
+```
+
+Next milestones: inspect existing resources and confirm database region/billing; configure the public web app and parent sign-in; implement the live data repository and trusted child-session lifecycle; migrate history to bounded subcollections and verify authoritative callable operations; then deploy and verify staging. The current backend scaffold must not be presented as a completed live database integration. Cloud Functions require the Blaze plan; enabling billing remains an owner decision.
+
+The emulator scripts always specify `demo-math-quest`, independent of the local alias. On this setup pass all six rule tests passed after increasing the cold-start setup-hook timeout to 60 seconds. No deployed rules or live account permissions were changed.
 
 ## What is prepared
 
