@@ -15,7 +15,7 @@ The local parent preview is explicitly insecure DEMO functionality. It is not pa
 - [x] Working demo parent learning evidence, inventory, approval/refund/fulfillment, ledger adjustments and learning goals.
 - [x] Firebase environment/configuration, restrictive access rules with emulator tests, compiled authoritative transaction scaffold and documented live-integration gates.
 - [x] Unit tests, typecheck, production and backend builds, desktop/tablet/mobile browser review. See VALIDATION.md for executed evidence.
-- [ ] Future live integration: parent authentication UI, trusted child-device provisioning, scalable Firestore repository, authenticated callable concurrency/replay testing and backend/frontend deployment. These remain explicitly disabled and are not claimed complete; the cloud foundation is recorded below.
+- [x] Live integration completed through the Spark-only path below: verified parent accounts, restricted child-device bindings, normalized Firestore repository, rules-enforced atomic economy and Hosting deployment. The original callable/Functions approach is superseded.
 
 ## Multiplication focus and rotation follow-up
 
@@ -51,5 +51,19 @@ The local parent preview is explicitly insecure DEMO functionality. It is not pa
 - [x] Register web app and save public SDK configuration outside Git with demo mode preserved.
 - [x] Create default Standard Firestore in us-central1; deploy tested restrictive rules and email/password provider configuration.
 - [x] Verify exact deployed rule source, anonymous access rejection, provider settings and disabled billing.
-- [ ] Implement authenticated frontend, trusted child provisioning, bounded live repository and callable integration tests before staging release.
-- [ ] Owner decision on Blaze billing before Cloud Functions deployment; no billing change has been made.
+- [x] Implement authenticated frontend, parent-approved child bindings and bounded live repository through the Spark-only route below.
+- [x] Choose Spark-only deployment and remove Functions from the production configuration; billing remains disabled.
+
+## Spark-only cloud implementation
+
+- [x] Replace the paid Functions deployment path with Firestore rules and atomic client transactions checked by those rules.
+- [x] Verified email/password parent signup, sign-in, password reset and memory-only parent sessions.
+- [x] Separate persisted child Auth identity, parent-created device binding, expiry/revocation and parent sign-out before child play.
+- [x] Normalized cloud history, permanent progress/fact aggregates, session resume and parent pagination.
+- [x] Server-validated arithmetic, bounded issuance, immutable ledger/attempts, atomic requests/refunds and parent inventory/settings.
+- [x] Preserve the illustrated adventure, dressing room, effects and isolated local demo.
+- [x] Unit, typecheck, rules-emulator and synthetic parent/child browser verification.
+- [x] Publish Spark Auth/rules/Hosting and verify all six deployed files, exact rule source, anonymous rejection and disabled billing.
+- [ ] Owner creates/verifies the real parent account and approves their actual child devices; physical-device and real email delivery acceptance remain human steps.
+
+This milestone supersedes the earlier Functions/Blaze integration plan. Legacy Functions code is retained as an unused reference; it is absent from the production deploy configuration. Billing must remain disabled.

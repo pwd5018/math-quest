@@ -11,6 +11,8 @@ export type Reward = {
   archived: boolean;
   limit: number;
   available: boolean;
+  /** Cloud inventory usage, maintained only by validated request/refund transactions. */
+  used?: number;
 };
 export type Request = {
   id: string;

@@ -135,6 +135,7 @@ export function selectQuestion({
   plan,
   events,
   asked,
+  history,
 }: {
   skill: Skill;
   level: number;
@@ -144,6 +145,7 @@ export function selectQuestion({
   plan: Curriculum;
   events: LearningEvent[];
   asked: Question[];
+  history?: { facts: Map<string, FactEvidence>; total: number };
 }): Question {
   if (!plan.enabledSkills.includes(skill))
     throw new Error("This trail is paused in the parent learning plan.");
@@ -174,9 +176,8 @@ export function selectQuestion({
     }
   }
   const seen = new Set(asked.map(factKey));
-  const { facts, total } = factEvidence(
-    events.filter((e) => e.question.skill === skill),
-  );
+  const { facts, total } =
+    history ?? factEvidence(events.filter((e) => e.question.skill === skill));
   const rng = random(seed + index * 7919);
   const pool = [...candidates]
     .filter(([key]) => !seen.has(key))

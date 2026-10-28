@@ -25,10 +25,12 @@ export default function PipStudio({
   look,
   onChange,
   onExplore,
+  cloud = false,
 }: {
   look: Appearance;
   onChange: (next: Appearance) => void;
   onExplore: () => void;
+  cloud?: boolean;
 }) {
   const [voiceMessage, setVoiceMessage] = useState("");
   function choose<K extends keyof Appearance>(key: K, value: Appearance[K]) {
@@ -85,7 +87,10 @@ export default function PipStudio({
               <strong>{moveNames[look.move].toLowerCase()}</strong>.
             </p>
             <span className="studio-save-note">
-              <Check size={13} /> Your choices save on this device.
+              <Check size={13} />{" "}
+              {cloud
+                ? "Your choices save to your family cloud profile."
+                : "Your choices save on this device."}
             </span>
           </div>
           <button className="primary" onClick={onExplore}>

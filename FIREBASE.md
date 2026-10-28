@@ -1,114 +1,76 @@
-# Firebase foundation and live-integration handoff
+# Firebase Spark deployment and operations
 
-The working product is local demo mode. **The Firebase web registration, default database, restrictive rules and email/password provider are configured; the application is not yet connected to live persistence.** No parent account, trusted child session, Hosting release or Cloud Function has been created/deployed by this work. `VITE_APP_MODE=firebase` displays a setup lock. Do not remove that guard until the gates below pass. Never migrate local demo balances into live money-like state as trusted data.
+Math Quest now uses **Firebase Hosting + email/password Authentication + Cloud Firestore on Spark**. No Cloud Functions, Admin SDK service account, billing account, or paid infrastructure is required by the live application. `functions/` and `src/lib/firebase.ts` are retained legacy scaffolding only; the production Firebase configuration has no Functions deployment target.
 
-## Current setup — October 27, 2026
+## Current project
 
-The application is backed up on GitHub branch `codex/math-quest-firebase`. The owner selected existing project `math-quest-2d6e5` and completed Firebase CLI sign-in. A local, Git-ignored `.firebaserc` maps the explicit `development` alias to it; no default deployment target is set.
+- Project: `math-quest-2d6e5`; default Standard/Native Firestore in `us-central1`.
+- Web app: `1:770154018698:web:4a5b061e001c581be4ba73`.
+- Hosting: `https://math-quest-2d6e5.web.app`.
+- Public SDK fields live in ignored `.env.local`; no Admin SDK keys are used by the browser.
+- `.firebaserc` is local and ignored. Every deployment command below names its project explicitly.
+- The deployment outcome and executed checks are recorded in VALIDATION.md. Merely building this repository does not confirm a cloud deployment.
 
-Verified cloud foundation:
+## First family setup
 
-- Registered **Math Quest Web**, app ID `1:770154018698:web:4a5b061e001c581be4ba73`. Its public SDK fields are in ignored `.env.local`; `VITE_APP_MODE=demo` remains set. No Admin SDK key was downloaded or created, and Analytics is not initialized by the application.
-- Enabled Firestore and created the `(default)` **Standard / Native** database in **us-central1**, matching the backend scaffold. Firebase reports `freeTier: true`. Paid PITR/backup features were not enabled. No child profiles, balances or practice records were seeded in the cloud.
-- Deployed only `firestore:rules` and `auth`. Email/password sign-in is enabled with password required. No parent custom claims or users were provisioned. Authorized domains are the project's `firebaseapp.com` and `web.app` domains; localhost was not added to the live project.
-- Retrieved the released Firestore rules and compared their normalized source to the tested local file: exact match, SHA-256 `8152ba7c97777a1b3bda95ab6f505eb3a1c1f7e7fd3f42c48b314fdae71794fa`. An anonymous REST read using the registered public web API key returned **403 PERMISSION_DENIED — Missing or insufficient permissions**.
-- An existing Hosting site was found at `https://math-quest-2d6e5.web.app`; no site content was published or verified. Billing was checked and is **disabled**. No Cloud Functions deployment was attempted.
+1. Open the hosted app, select **Parent sign-in & setup**, then **Create a parent account**. Enter your own email/password; the app requests at least 12 characters. Open the verification email and return to **I've verified my email**. Only verified password accounts can act as parents. No public child PIN or front-end role flag grants parent authority.
+2. Create a child profile with a nickname only. Choose whether to explicitly approve the three sample family rewards. New cloud profiles start at zero coins; local demo saves are never imported as trusted financial or mastery data.
+3. Select **Approve this device & let's play**. The browser has a separate anonymous Auth identity for the child. Your verified parent writes a binding for that exact identity, then signs out of parent Authentication before the child adventure opens.
+4. Child approval lasts 30 days. Parent credentials use memory-only persistence, are cleared on page reload/sign-out, and the parent interface locks after 15 minutes. Rules additionally reject parent sessions older than one hour. The child identity persists on the approved browser, but cannot read or change parent/device administration.
+5. To use another tablet/browser, sign in as the same parent there and approve that device. Both devices share the same family profile. Use **Approved devices** in parent controls to revoke a device. Revocation/expiry is enforced on every server operation; the UI checks the binding too.
 
-Sanitized local verification evidence is in `artifacts/firebase-foundation-check.json` (ignored by Git). The production user/child authorization and concurrency flows remain unverified and unimplemented as described below.
+Password reset and verification resend are available. Email delivery is performed by Firebase; real inbox delivery and physical-device acceptance require the account owner's review. Browser automation uses synthetic emulator accounts only, never a real parent password.
 
-Run `npm.cmd exec firebase -- login` locally and complete Google's sign-in yourself. Never paste authorization codes, tokens or service-account JSON into chat or source control. After sign-in, inspect the selected project before changing it:
+## Data and authority
 
-```powershell
-npm.cmd exec firebase -- projects:list
-npm.cmd exec firebase -- apps:list WEB --project math-quest-2d6e5
-npm.cmd exec firebase -- firestore:databases:list --project math-quest-2d6e5
-npm.cmd exec firebase -- hosting:sites:list --project math-quest-2d6e5
-```
+`firestore.spark.rules` is the deployed schema's authority. The old `firestore.rules` tests remain as regression coverage for the locked legacy schema. All unspecified paths and all deletes are denied.
 
-Next milestones: implement parent sign-in in the app and trusted child-session provisioning; implement the live repository; migrate history to bounded subcollections; test authenticated callable operations and replay/concurrency behavior with emulators; configure App Check and live CSP; then deploy and verify staging. The current backend scaffold must not be presented as a completed live database integration. Cloud Functions require the Blaze plan; enabling billing remains an owner decision. Repository code and emulator work can continue before enabling billing.
+- `familiesV2/{parentUid}/children/explorer`: nickname, validated appearance, savings goal, parent learning settings and creation timestamp.
+- Subcollections: `wallet/current`, `runtime/current`, `progress/{skill}`, `facts/{canonicalFact}`, `sessions/{sessionId}`, immutable `attempts`, immutable `events`, immutable `ledger`, parent-managed `rewards`, and reversible `requests`.
+- `sparkDevices/{anonymousUid}`: parent-owned family binding with expiry and revocation. Anonymous sign-in by itself grants no family access. Ownership uses authenticated UIDs and token provider/verification claims, not client-supplied role properties.
 
-The emulator scripts always specify `demo-math-quest`, independent of the local alias. All six rule tests passed after increasing the cold-start setup-hook timeout to 60 seconds; the deployed rule source was verified against that tested file. This does not replace end-to-end parent/student authorization testing.
+For each answer, rules validate the saved question, arithmetic, hint/retry counters, one-time attempt, allowed coin delta, server UTC day, daily cap and per-skill/difficulty five-credit bucket. Wallet, immutable ledger, attempt, session, permanent skill progress and fact evidence must agree in one atomic transaction. Questions cannot be changed after issue, and each ten-question session contains distinct commutative fact families. Active sessions retain their parent's curriculum snapshot. Progress/mastery updates are validated independently of spendable coins. The selected question and coin amounts are proposals until the server accepts the transaction.
 
-## What is prepared
+Question scheduling and word-problem rendering remain deterministic client code. Rules validate allowed operands, level, plan and non-repetition; they do **not** duplicate the entire history-ranking scheduler or establish that a human solved the question. A modified client can automate valid practice or choose another eligible fact. Earning caps still apply, and neither a Functions architecture nor rules can prove human effort. No competitive/high-stakes anti-cheat claim is made.
 
-- Firebase Hosting configuration for a Vite SPA and security headers. The shipped CSP permits only local connections, intentionally suitable for demo hosting. Live Auth/Firestore/Functions/App Check origins need a narrowly scoped CSP update and browser verification before live integration.
-- An `.env.example` with public web-app configuration fields. No Admin SDK keys belong in frontend environment variables, source control, or a Vite bundle. Use platform service identity for Functions.
-- Lazy SDK initialization in `src/lib/firebase.ts`, including opt-in emulator connections. It is not called by the demo and is not a finished persistence adapter or login UI.
-- Firestore rules: only an owning provisioned parent or a correctly bound student token may get a child state document. Only the parent may list their children. All direct client writes are denied. Answer keys and idempotency receipts are server-only, including for parent clients. Six emulator tests cover anonymous access, unprovisioned users, different families, sibling access, client writes, child list access and answer-key reads.
-- `functions/src/index.ts`: a callable **integration scaffold**, not a production service. Auth and App Check are required. Parent ownership comes from server-issued custom claims, never request role flags. The function resolves the family and child from trusted claims for students. All state changes and operation receipts are in a Firestore transaction.
+Requests atomically reserve the saved reward price and increment usage. Only the owning verified parent can approve, fulfill, or decline. Decline refunds the original reserved cost exactly once and restores quantity capacity. Fulfilled requests cannot be refunded. Parent coin adjustments require a nonzero bounded integer and a reason, with a matching ledger record and nonnegative wallet. All balance mutations are validated on the server; no local balance is uploaded as authority.
 
-## Backend contract
+History lives in subcollections, avoiding an ever-growing family state document. Parent history and requests load 100 records per collection per page with a **Load older history & requests** action, including older unfulfilled requests. Displayed accuracy/history reflects loaded evidence; skill mastery and stars are permanent server-validated aggregates. The opening-balance ledger display reconciles older unloaded entries and is not a writable award. Fact evidence and four skill aggregates survive reloads independently of the current history page. The scheduler loads the newest 1,000 canonical fact summaries (enough for every multiplication family); older summaries remain stored and update transactionally when revisited.
 
-`questCommand` accepts `{action, operationId, ...payload}`. Use a cryptographically random stable operation ID per intended command; reuse it for network retries. Parent operations also include `childId`. A child caller's supplied family/child IDs are ignored. Never send a balance or an award amount from the student client.
+## Local development and checks
 
-| Action          | Caller                  | Payload / behavior                                                                                                                          |
-| --------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `initialize`    | Parent                  | `nickname`; initialize this parent's child at zero coins                                                                                    |
-| `start`         | Bound student or parent | `skill`; issue a server-seeded question, 24-hour session; no answer key returned                                                            |
-| `resume`        | Bound student or parent | Retrieve active question and index                                                                                                          |
-| `hint`          | Bound student or parent | `questionId`; record hint use before returning help                                                                                         |
-| `answer`        | Bound student or parent | `questionId`, `answer` string; verify server question, store evidence, advance mastery, award bounded coins, issue next question atomically |
-| `requestReward` | Bound student or parent | `rewardId`; validate inventory, balance and limits; reserve coins and create pending request atomically                                     |
-| `resolveReward` | Parent                  | `requestId`, `resolution`: approve/decline/fulfill; refund once on valid decline                                                            |
-| `adjustCoins`   | Parent                  | Whole `amount`, required `reason`; reject negative resulting balance                                                                        |
-| `saveReward`    | Parent                  | Validated `reward` object; explicit approval/availability/archival flags and quantity limit                                                 |
-| `settings`      | Parent                  | `nickname`, `dailyCap` 0–200, `weeklySessions` 1–14                                                                                         |
-
-The scaffold uses `families/{parentUid}/children/{childId}` for a small bounded state document, `/private/session` for server answer keys, and `/operations/{operationId}` for idempotency receipts. It fails closed at 500 completed questions, 1,500 events, 1,000 ledger entries, or 100 requests. **Before production, move histories, ledger, requests, sessions and operation receipts into bounded subcollections with a transactional wallet/aggregate document, retention rules and pagination.** The limits are preparation safeguards, not a scalable final data model. Child reads currently expose their own family reward/learning state and adjustment reasons; split parent-only notes before introducing sensitive notes. Do not put PII in ledger reasons.
-
-App Check is an abuse barrier, not authorization or proof that a human solved a math problem. Client secrecy cannot prevent using outside help. Server questions, authoritative timestamps, immutable ledger math, per-question idempotency and earning caps protect the economy. The server validates all operation inputs; backend emulator concurrency/replay tests are still required.
-
-### Versioned learning plans
-
-The parent-only `settings` command also accepts `curriculum: {focusSkill, enabledSkills, maxFactor, mode}`. `maxFactor` is an integer 5–12; mode is `adaptive` or `full-range`; the focus must be enabled. The server ignores a supplied revision and derives the next revision from the saved plan. Missing curriculum in the settings command preserves the saved curriculum for compatibility. Legacy documents without a curriculum migrate to multiplication-only through 12 × 12 without resetting the wallet or learning evidence.
-
-`start` snapshots the validated server-owned plan, seed, current question and asked facts in the private session. `hint` and `answer` continue that snapshot even if the parent changes the saved plan. The shared deterministic scheduler excludes already-asked families, spaces recent facts, balances coverage and delayed tricky-fact review, and checks enabled skills when an adventure starts. Start/resume return the active plan and safe question metadata; completed sessions retain the plan/seed. Changing the plan does not reset daily earning buckets or permanent achievements. The same local unit tests exercise this shared scheduler; the modified callable wiring has been compiled, not executed against a live backend.
-
-### Child-owned cosmetic preferences
-
-The shared `State.appearance` contains only `outfit`, `accent`, `hat`, `glasses`, `move`, `sky`, `motion` and `voice`. The scaffold’s authenticated `appearance` command accepts `{action: 'appearance', operationId, appearance}` from the bound child or owning parent (a parent also supplies `childId` as usual). `changeAppearance` validates enum/boolean values, copies only these eight cosmetic fields and preserves the wallet, ledger, requests, mastery and learning plan. Additional fields such as roles, balances or learning settings cannot be carried through a cosmetic command. All direct Firestore writes remain denied. Legacy state receives default cosmetics; malformed cosmetics alone do not reset the learning/economy state. UI motion preferences are cosmetic, not authorization or security controls. This command is prepared and compiled only; Firebase mode and production deployment remain disabled.
-
-## Setup and security gates
-
-1. Use the configured project/database/provider above, or create separate development/staging resources intentionally. Enable an appropriate App Check provider before callable integration. Keep the console account and billing under parent control.
-2. Provision parent custom claims only through a trusted Admin workflow after ownership is established: `{parent: true}`. No browser write, sign-up form role, nickname, public PIN, or mutable Firestore role flag may grant this claim.
-3. Implement and test real parent sign-in, sign-out and recent reauthentication for entry to parent tools. A student must use a distinct, restricted identity provisioned only after the authenticated parent approves a device/session. A trusted provisioning endpoint should issue `{student: true, parentUid, childId}` custom claims/token, with revocation, expiry and device management. Do not leave parent credentials or an active parent session available in the student view. **The provisioning endpoint and authenticated frontend are not implemented yet.**
-4. Replace demo persistence with a live repository adapter: server read subscription and callable commands only. Student bundles must not issue local awards. Strip server answer keys from active question responses. Connect App Check initialization before calling enforced functions. Add a parent-only savings/reward administration surface and a student-safe goal setter (the scaffold does not yet expose a goal command).
-5. Migrate the bounded state model above, implement rate limits and retention/deletion/export, paginate learning records, and add trusted bootstrap/claim-revocation operational procedures. Avoid promising offline financial writes; replay only an idempotent operation, never a local balance.
-6. Run local emulators, rule tests, and authenticated callable tests: parent/student/anonymous/other-family authorization, forged role and balance fields, stale sessions, question replay, simultaneous spend, inventory races, double refund, award cap at UTC rollover, malformed inputs, and idempotent network retries. Test sign-out/revocation and App Check enforcement in staging. Existing rule tests and domain tests do **not** prove these end-to-end properties.
-7. Only after those gates, connect the frontend and replace the Firebase setup lock with the authenticated application. Verify a staging build never displays the demo parent route, and verify Firestore rules against the exact deployed schema.
-
-## Local emulator commands
-
-Use Node 22 for the functions runtime and Java 21+ for Firestore.
+Default `.env.example` mode is the isolated local demo. For cloud emulator QA, supply mode `firebase`, emulator flag `true`, and a `demo-` project. Emulators are allowed only on localhost. Do not point synthetic tests at the live project.
 
 ```powershell
 npm.cmd ci
-npm.cmd ci --prefix functions
-npm.cmd run functions:build
 npm.cmd run firebase:rules:test
 npm.cmd run firebase:emulators
+npm.cmd test
+npm.cmd run typecheck
+npm.cmd run build
 ```
 
-These scripts explicitly use `demo-math-quest`, so they do not create production resources. The test suite seeds records via the emulator's rules-disabled admin context, never a live database. The Functions emulator uses the compiled backend; compile before launching it. App Check debugging must use an explicitly configured local/staging debug token, never disable production enforcement as a workaround.
+`firebase:rules:test` launches only Firestore under an explicit demo project and runs legacy plus Spark security tests. Browser account tests additionally use the local Auth emulator. Java 21+ is required for Firestore. Emulator tests do not prove physical-device behavior or real verification/reset email delivery.
 
-## Eventual hosting and backend deployment
+## Build and publish
 
-Deploying Cloud Functions requires the **Blaze (pay-as-you-go) plan**; usage, build artifacts and associated cloud services can incur charges. Hosting a static demo alone does not supply authoritative operations. Review current pricing and set budget alerts before enabling billing. Budget alerts are not hard spend caps. No paid infrastructure was enabled by this project.
-
-Once you intentionally have a project and have passed the gates, use `firebase login`, then `firebase use --add` to select your actual project. Copy `.env.example` to `.env.local` and fill only the public web-app fields. Configure authorized domains, App Check, server region and narrowly scoped live CSP connections. Use the project's CLI through `npx firebase` (or `npm exec firebase -- …`).
+1. Complete `.env.local` from the registered web app's public SDK configuration. Keep it ignored. The deployed app uses only API key, auth domain, project ID and app ID; it does not initialize Analytics.
+2. Run the tests above, then `npm.cmd run build:cloud`. This forces live mode and disables emulator connections for that build. It rejects missing configuration and demo project IDs.
+3. Publish only the Spark services:
 
 ```powershell
-# Static DEMO only, if intentionally publishing the local simulation:
-npm.cmd run build
-npx.cmd firebase deploy --only hosting --project YOUR_REAL_PROJECT_ID
-
-# For a verified future live implementation, deploy rules/functions before its frontend:
-npm.cmd run functions:build
-npx.cmd firebase deploy --only firestore:rules,functions --project YOUR_REAL_PROJECT_ID
-# Then build/deploy the fully integrated, verified frontend separately.
+npm.cmd run build:cloud
+npm.cmd exec firebase -- deploy --only auth,firestore:rules,hosting --project math-quest-2d6e5
 ```
 
-`YOUR_REAL_PROJECT_ID` is a generic placeholder; the currently selected project is documented above. Hosting the current demo must retain every demo disclosure. Only the foundation's Auth configuration and restrictive Firestore rules have been deployed. No Hosting release, Cloud Functions deployment or live application integration has been run or claimed.
+The Auth config enables email/password and anonymous identities; family access still requires parent-approved bindings. The Hosting CSP permits the Auth token/identity APIs and Firestore only. Verify HTTPS rendering, sign-in, deployed rules, anonymous denial and the browser console after release. Do not enable billing or deploy legacy Functions as a workaround.
 
-Official references: [Callable functions and auth context](https://firebase.google.com/docs/functions/callable), [Security rule conditions and authentication](https://firebase.google.com/docs/firestore/security/rules-conditions), [Custom claims](https://firebase.google.com/docs/auth/admin/custom-claims), [Functions runtime management](https://firebase.google.com/docs/functions/manage-functions), [Functions setup and billing](https://firebase.google.com/docs/functions/get-started), [Firebase pricing](https://firebase.google.com/pricing).
+The Spark application is published at the Hosting address above. All six hosted files were verified byte-for-byte against the cloud build, and the released rules matched local source. Both Auth providers are enabled and the billing check returned `false`. Firebase's reserved email-action pages are served by Firebase itself; their own handler is separate from the SPA. Real account creation, inbox verification, password-reset delivery and physical child-device acceptance remain owner steps.
+
+## Free-plan limits and GitHub
+
+Spark has usage quotas. Hosting traffic, Auth activity, rule document lookups, listeners, history queries and transactions all consume their respective quotas. Reaching a Spark limit can stop service; this is not unlimited free hosting. Billing remains disabled, so this implementation must not silently upgrade to Blaze. No exact capacity or future pricing guarantee is made. Check the Firebase console for usage.
+
+The app is backed up on `codex/math-quest-firebase`. The GitHub Actions workflow validates tests, typecheck, builds and emulator rules on pushes/PRs. **Automatic cloud deployment is not configured.** Hosting publication is explicit. Future GitHub deployments should use a scoped deployment identity, preview releases and a checked release branch; adding CI access is a separate configuration action.
+
+Official references: [Spark pricing](https://firebase.google.com/pricing), [atomic rules validation](https://firebase.google.com/docs/firestore/security/rules-conditions), [Auth persistence](https://firebase.google.com/docs/auth/web/auth-state-persistence), [anonymous identities](https://firebase.google.com/docs/auth/web/anonymous-auth).

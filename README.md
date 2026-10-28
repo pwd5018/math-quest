@@ -2,6 +2,12 @@
 
 A little practice. A big adventure. A responsive, third-grade math adventure made with React, TypeScript, Vite and Tailwind CSS. Original SVG world art and Pip the fox are bundled locally; no ads, AI APIs, external fonts, paid content, analytics or tracking.
 
+## Family cloud version — Firebase Spark
+
+The cloud version uses Firebase Hosting, email/password Authentication and Firestore security rules/transactions. It needs no Cloud Functions or billing account. Parent sign-in and email verification authorize a private family profile; a parent approves a separate anonymous identity on each child browser, then signs out of parent access. Parent access locks after 15 minutes; child approvals expire after 30 days and can be revoked. No public PIN or front-end role flag grants parent access.
+
+The cloud app is configured for `math-quest-2d6e5`. See [FIREBASE.md](FIREBASE.md) for setup, security design, free-plan limits and the current deployment evidence in [VALIDATION.md](VALIDATION.md). Publication uses `npm.cmd run build:cloud` followed by an explicit Hosting/rules/Auth deployment. GitHub currently runs validation only; automatic deployment is not configured.
+
 ## Run locally
 
 Requires Node 22.12+ (Node 24 also works for the local app), npm and a modern browser.
@@ -14,7 +20,7 @@ npm.cmd run dev
 
 Open the URL Vite prints. Default is `http://localhost:5173`. No Firebase account or credentials are needed. On macOS/Linux, use `npm` instead of `npm.cmd`.
 
-**This is a functional LOCAL DEMO.** It stores fictional learning and reward data in this browser's localStorage. It has no cross-device sync, tamper resistance, secure parent authentication or secure approvals. The grown-up corner explicitly discloses this before opening. There is no publicly exposed child PIN. Live Firebase mode is deliberately locked; adding web configuration does not unlock it or turn simulated approvals into secure ones. See [FIREBASE.md](FIREBASE.md).
+**The default local mode is a functional LOCAL DEMO.** It stores fictional learning and reward data in this browser's localStorage. It has no cross-device sync, tamper resistance, secure parent authentication or secure approvals. The grown-up corner explicitly discloses this before opening. Cloud mode (`VITE_APP_MODE=firebase`) opens the authenticated family application instead; its database writes require the deployed Spark rules. Cloud profiles start at zero and never trust imported demo balances or mastery. See [FIREBASE.md](FIREBASE.md).
 
 ## Try the complete vertical slice
 
@@ -61,13 +67,14 @@ The graphics upgrade adds layered terrain, shoreline depth, snowy peaks, shaded 
 | `npm.cmd test`                    | Math, progression, economy and persistence unit tests                  |
 | `npm.cmd run typecheck`           | Strict application TypeScript check                                    |
 | `npm.cmd run build`               | Typecheck and production `dist/` build                                 |
+| `npm.cmd run build:cloud`         | Validate public config and build live mode with emulators disabled     |
 | `npm.cmd run preview`             | Serve the production build locally                                     |
 | `npm.cmd ci --prefix functions`   | Install backend scaffold dependencies                                  |
 | `npm.cmd run functions:build`     | Compile the separate authoritative backend scaffold                    |
 | `npm.cmd run firebase:rules:test` | Run access rules tests with a local demo Firestore emulator (Java 21+) |
 | `npm.cmd run firebase:emulators`  | Local Auth/Firestore/Functions preparation, never a real deployment    |
 
-`src/lib/math.ts` owns questions, hints and answer validation. `curriculum.ts` owns validated parent plans, migrations, per-fact review evidence and deterministic selection. `learning.ts` owns durable per-skill evidence. `economy.ts` owns the ledger, issuance limits and reward state machine. `appearance.ts` validates a strict cosmetic field allowlist; `storage.ts` owns demo initialization and persistence. `Art.tsx`, `Companion.tsx` and `PipStudio.tsx` draw, animate and customize Pip without coupling cosmetic actions to the math/economy engines. `App.tsx` connects the experience. `firebase.ts` is a lazy, unused integration boundary; it does not initialize or transmit data in demo mode. The separate `functions/` package reuses the same tested scheduler and domain logic behind server-owned transactions. Firestore clients cannot write balances, plans, approvals, or answer keys.
+`src/lib/math.ts` owns questions, hints and answer validation. `curriculum.ts` owns validated parent plans, migrations, per-fact review evidence and deterministic selection. `learning.ts` owns durable per-skill evidence. `economy.ts` owns the ledger, issuance limits and reward state machine. `appearance.ts` validates a strict cosmetic field allowlist; `storage.ts` owns demo initialization and persistence. `Art.tsx`, `Companion.tsx` and `PipStudio.tsx` draw, animate and customize Pip without coupling cosmetic actions to the math/economy engines. `App.tsx` connects the experience. `firebase.ts` is a lazy, unused integration boundary; it does not initialize or transmit data in demo mode. The separate `functions/` package is retained legacy scaffolding and is not deployed. In cloud mode, `cloudFirebase.ts` separates parent and child authentication, `cloudRepository.ts` proposes atomic operations, and `firestore.spark.rules` validates every accepted balance, progress, request and approval change on Google’s servers. No arbitrary client balance or role flag is trusted.
 
 Keyboard focus indicators, a skip link, labeled inputs, modal focus containment/Escape dismissal, responsive navigation, large controls and reduced-motion support are included. No timed scoring, public child profiles, full names or birthdays.
 

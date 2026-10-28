@@ -51,6 +51,8 @@ import { Companion } from "./components/Companion";
 import PipStudio from "./components/PipStudio";
 import { changeAppearance } from "./lib/appearance";
 import { stopPipVoice } from "./lib/pipVoice";
+import type { CloudRepository } from "./lib/cloudRepository";
+import type { CloudSession } from "./lib/cloudModel";
 import {
   Atmosphere,
   RewardArtwork,
@@ -106,21 +108,63 @@ const regions = [
 ];
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
-export default function App() {
-  const [loaded] = useState(loadState);
+export type CloudBridge = {
+  state: State;
+  repo: CloudRepository;
+  parent: boolean;
+  revision: number;
+  onParent: () => void;
+  onLeave: () => void;
+  onChange: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
+};
+function liveRun(s: CloudSession): Run {
+  return {
+    id: s.id,
+    skill: s.skill,
+    seed: s.seed,
+    index: s.index,
+    correct: s.independent,
+    coins: s.coins,
+    finished: s.finished,
+    plan: s.plan,
+    question: s.question,
+    asked: [],
+  };
+}
+export default function App({ cloud }: { cloud?: CloudBridge }) {
+  const [loaded] = useState(() =>
+    cloud ? { state: cloud.state, warning: "" } : loadState(),
+  );
   const [state, setState] = useState(loaded.state);
-  const [page, setPage] = useState<Page>("map");
+  const [page, setPage] = useState<Page>(cloud?.parent ? "parent" : "map");
   const [toast, setToast] = useState(loaded.warning || "");
   const [parentGate, setParentGate] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
-  const [run, setRun] = useState<Run | null>(null);
-  const [answer, setAnswer] = useState("");
-  const [first, setFirst] = useState("");
-  const [hints, setHints] = useState(0);
-  const [wrongs, setWrongs] = useState(0);
-  const [feedback, setFeedback] = useState<"wrong" | "right" | null>(null);
-  const [earned, setEarned] = useState(0);
+  const [run, setRun] = useState<Run | null>(
+    cloud?.repo.active ? liveRun(cloud.repo.active) : null,
+  );
+  const [answer, setAnswer] = useState(
+    cloud?.repo.active?.answered
+      ? String(cloud.repo.active.question.answer)
+      : "",
+  );
+  const [first, setFirst] = useState(cloud?.repo.active?.first ?? "");
+  const [hints, setHints] = useState(cloud?.repo.active?.hints ?? 0);
+  const [wrongs, setWrongs] = useState(cloud?.repo.active?.wrongs ?? 0);
+  const [feedback, setFeedback] = useState<"wrong" | "right" | null>(
+    cloud?.repo.active?.answered ? "right" : null,
+  );
+  const [earned, setEarned] = useState(() =>
+    cloud?.repo.active?.answered
+      ? (cloud.state.attempts.find(
+          (a) => a.id === cloud.repo.active!.question.id,
+        )?.coins ?? 0)
+      : 0,
+  );
   const successRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (cloud) setState(cloud.state);
+  }, [cloud?.state]);
   useEffect(() => {
     if (state.appearance.voice === "off") stopPipVoice();
   }, [state.appearance.voice]);
@@ -140,7 +184,24 @@ export default function App() {
     setParentGate(false);
     setConfirmReward(null);
   });
-  function update(next: State) {
+  async function update(next: State): Promise<boolean> {
+    // Silence is immediate, even while a cloud preference write is pending.
+    if (next.appearance.voice === "off") stopPipVoice();
+    if (cloud) {
+      const ok = await cloud.onChange(async () => {
+        if (
+          next.events.length > state.events.length &&
+          next.events[next.events.length - 1].kind === "hint"
+        )
+          await cloud.repo.hint();
+        else if (next.requests.length > state.requests.length) {
+          const request = next.requests[next.requests.length - 1];
+          await cloud.repo.requestReward(request.rewardId, request.id);
+        } else await cloud.repo.preferences(next);
+        return true;
+      });
+      return ok === true;
+    }
     try {
       saveState(next);
       setState(next);
@@ -165,6 +226,20 @@ export default function App() {
     window.scrollTo(0, 0);
   }
   function start(skill: Skill = state.settings.curriculum.focusSkill) {
+    if (cloud) {
+      void cloud.onChange(async () => {
+        const s = await cloud.repo.start(skill);
+        setRun(liveRun(s));
+        setAnswer("");
+        setFirst(s.first);
+        setHints(s.hints);
+        setWrongs(s.wrongs);
+        setFeedback(s.answered ? "right" : null);
+        setSolvedQuestion(s.answered ? s.question : null);
+        navigate("practice");
+      });
+      return;
+    }
     if (!state.settings.curriculum.enabledSkills.includes(skill)) {
       setToast(
         "Your grown-up has paused this trail. Explore your active learning focus instead.",
@@ -205,11 +280,29 @@ export default function App() {
   }
   const q = run && !run.finished ? run.question : null;
   // Freeze the current question after recording, so advancing difficulty cannot change its explanation.
-  const [solvedQuestion, setSolvedQuestion] = useState<typeof q>(null);
-  function submit(e: React.FormEvent) {
+  const [solvedQuestion, setSolvedQuestion] = useState<typeof q>(
+    cloud?.repo.active?.answered ? cloud.repo.active.question : null,
+  );
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!q || !run || feedback === "right" || !/^\d+$/.test(answer.trim()))
       return;
+    if (cloud) {
+      await cloud.onChange(async () => {
+        const result = await cloud.repo.answer(answer);
+        const active = cloud.repo.active!;
+        setFirst(active.first);
+        setHints(active.hints);
+        setWrongs(active.wrongs);
+        setEarned(result.earned);
+        setFeedback(result.correct ? "right" : "wrong");
+        if (result.correct) {
+          setSolvedQuestion(q);
+          setRun(liveRun(active));
+        }
+      });
+      return;
+    }
     const event = {
       questionId: q.id,
       sessionId: run.id,
@@ -281,6 +374,19 @@ export default function App() {
   }
   function nextQuestion() {
     if (!run) return;
+    if (cloud) {
+      void cloud.onChange(async () => {
+        const s = await cloud.repo.next();
+        setRun(liveRun(s));
+        setAnswer("");
+        setFirst(s.first);
+        setHints(s.hints);
+        setWrongs(s.wrongs);
+        setFeedback(null);
+        setSolvedQuestion(null);
+      });
+      return;
+    }
     if (run.index === 9) {
       const next = {
         ...state,
@@ -344,7 +450,7 @@ export default function App() {
     { id: "badges", icon: Award, name: "My achievements" },
     { id: "studio", icon: Shirt, name: "Pip’s dressing room" },
   ] as const;
-  if (import.meta.env.VITE_APP_MODE === "firebase")
+  if (import.meta.env.VITE_APP_MODE === "firebase" && !cloud)
     return (
       <main className="setup-screen">
         <ShieldCheck size={48} />
@@ -427,11 +533,23 @@ export default function App() {
               <p>Big adventures start with a little curiosity.</p>
             </div>
           </div>
-          <button className="parent-link" onClick={() => setParentGate(true)}>
+          <button
+            className="parent-link"
+            onClick={() =>
+              cloud
+                ? cloud.parent
+                  ? navigate("parent")
+                  : cloud.onParent()
+                : setParentGate(true)
+            }
+          >
             <LockKeyhole size={16} /> Grown-up corner <ChevronRight size={15} />
           </button>
           <div className="local-note">
-            <span /> LOCAL DEMO · SAVED ON THIS DEVICE
+            <span />{" "}
+            {cloud
+              ? "FAMILY CLOUD SAVE · PRIVATE"
+              : "LOCAL DEMO · SAVED ON THIS DEVICE"}
           </div>
         </div>
       </aside>
@@ -452,7 +570,8 @@ export default function App() {
             <span>✦</span> <span className="grade">GRADE 3</span>
           </div>
           <span className="demo-mode">
-            DEMO <span>· THIS DEVICE ONLY</span>
+            {cloud ? "CLOUD" : "DEMO"}{" "}
+            <span>{cloud ? "· FAMILY SAVE" : "· THIS DEVICE ONLY"}</span>
           </span>
           <div className="header-stats">
             <span className="star-stat">
@@ -496,10 +615,12 @@ export default function App() {
             </button>
             <button
               className="help-button"
-              aria-label="About demo mode"
+              aria-label={cloud ? "About cloud saves" : "About demo mode"}
               onClick={() =>
                 setToast(
-                  "Local demo: progress is stored only in this browser. Parent tools simulate approvals and are not securely authenticated. No account or child information is sent to a server.",
+                  cloud
+                    ? "Family cloud save: progress and rewards are saved to your private family profile. Parent tools require a separate verified sign-in."
+                    : "Local demo: progress is stored only in this browser. Parent tools simulate approvals and are not securely authenticated. No account or child information is sent to a server.",
                 )
               }
             >
@@ -920,9 +1041,8 @@ export default function App() {
                         <button
                           className="hint-button"
                           disabled={feedback === "right"}
-                          onClick={() => {
-                            setHints((h) => h + 1);
-                            update({
+                          onClick={async () => {
+                            const saved = await update({
                               ...state,
                               events: [
                                 ...state.events,
@@ -940,6 +1060,7 @@ export default function App() {
                                 },
                               ],
                             });
+                            if (saved) setHints((h) => h + 1);
                           }}
                         >
                           <Lightbulb size={17} />
@@ -1067,18 +1188,23 @@ export default function App() {
               <div className="notice">
                 <ShieldCheck size={19} />
                 <span>
-                  These are seeded, parent-approved demo rewards. Requests
-                  reserve coins and wait for demo parent approval.
+                  {cloud
+                    ? "These rewards are chosen and approved by your parent. Requests reserve coins and wait for parent approval."
+                    : "These are seeded, parent-approved demo rewards. Requests reserve coins and wait for demo parent approval."}
                 </span>
               </div>
               <div className="reward-grid">
                 {state.rewards
                   .filter((r) => r.approved && !r.archived)
                   .map((r) => {
-                    const used = state.requests.filter(
-                      (req) =>
-                        req.rewardId === r.id && req.status !== "declined",
-                    ).length;
+                    const used =
+                      cloud && r.used !== undefined
+                        ? r.used
+                        : state.requests.filter(
+                            (req) =>
+                              req.rewardId === r.id &&
+                              req.status !== "declined",
+                          ).length;
                     const unavailable =
                       !r.available || (r.limit > 0 && used >= r.limit);
                     return (
@@ -1279,19 +1405,66 @@ export default function App() {
           {page === "studio" && (
             <PipStudio
               look={state.appearance}
+              cloud={!!cloud}
               onChange={(look) => safely(() => changeAppearance(state, look))}
               onExplore={() => navigate("map")}
             />
           )}
-          {page === "parent" && (
+          {page === "parent" && (!cloud || cloud.parent) && (
             <Parent
               state={state}
               update={update}
               safely={safely}
-              onLeave={() => navigate("map")}
+              onLeave={() => (cloud ? cloud.onLeave() : navigate("map"))}
+              cloud={!!cloud}
+              commands={
+                cloud?.parent
+                  ? {
+                      reward: async (reward) =>
+                        (await cloud.onChange(async () => {
+                          await cloud.repo.saveReward(reward);
+                          return true;
+                        })) === true,
+                      settings: async (next) =>
+                        (await cloud.onChange(async () => {
+                          await cloud.repo.saveSettings(next);
+                          return true;
+                        })) === true,
+                      adjust: async (amount, reason) =>
+                        (await cloud.onChange(async () => {
+                          await cloud.repo.adjust(amount, reason);
+                          return true;
+                        })) === true,
+                      resolve: async (id, action) =>
+                        (await cloud.onChange(async () => {
+                          await cloud.repo.resolve(
+                            id,
+                            action === "approve"
+                              ? "approved"
+                              : action === "decline"
+                                ? "declined"
+                                : "fulfilled",
+                          );
+                          return true;
+                        })) === true,
+                    }
+                  : undefined
+              }
               adjust={adjustCoins}
               resolve={resolveRequest}
             />
+          )}
+          {cloud?.parent && page === "parent" && (
+            <div className="cloud-history-note">
+              Overview reflects loaded history (up to 100 records per page);
+              mastery and stars use permanent aggregates.{" "}
+              <button
+                className="text-link"
+                onClick={() => void cloud.onChange(() => cloud.repo.loadMore())}
+              >
+                Load older history &amp; requests
+              </button>
+            </div>
           )}
           <footer className="page-footer">
             <span>Made for curious minds & little moments of discovery.</span>
@@ -1373,7 +1546,7 @@ export default function App() {
             <p>
               Request <strong>{confirmReward.title}</strong> for{" "}
               {confirmReward.cost} coins? Your coins will be reserved while your
-              demo grown-up decides.
+              {cloud ? "grown-up" : "demo grown-up"} decides.
             </p>
             <div className="button-row">
               <button

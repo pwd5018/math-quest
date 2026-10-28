@@ -26,11 +26,21 @@ import { useDialog } from "../lib/useDialog";
 import { reviseCurriculum } from "../lib/curriculum";
 type Props = {
   state: State;
-  update: (s: State) => boolean;
+  update: (s: State) => Promise<boolean>;
   safely: (fn: () => State) => void;
   onLeave: () => void;
   adjust: typeof adjustCoins;
   resolve: typeof resolveRequest;
+  cloud?: boolean;
+  commands?: {
+    reward: (reward: Reward) => Promise<boolean>;
+    settings: (state: State) => Promise<boolean>;
+    adjust: (amount: number, reason: string) => Promise<boolean>;
+    resolve: (
+      id: string,
+      action: "approve" | "decline" | "fulfill",
+    ) => Promise<boolean>;
+  };
 };
 const blank: Reward = {
   id: "",
@@ -50,6 +60,8 @@ export default function Parent({
   onLeave,
   adjust,
   resolve,
+  cloud = false,
+  commands,
 }: Props) {
   const [tab, setTab] = useState("overview");
   const [planDraft, setPlanDraft] = useState(() =>
@@ -67,7 +79,7 @@ export default function Parent({
   ).size;
   const hintEvents = state.events.filter((e) => e.kind === "hint").length;
   const pending = state.requests.filter((r) => r.status === "pending").length;
-  function saveReward(e: React.FormEvent) {
+  async function saveReward(e: React.FormEvent) {
     e.preventDefault();
     if (
       !editing ||
@@ -83,13 +95,22 @@ export default function Parent({
       id: editing.id || crypto.randomUUID(),
       title: editing.title.trim(),
     };
-    update({
-      ...state,
-      rewards: editing.id
-        ? state.rewards.map((r) => (r.id === reward.id ? reward : r))
-        : [...state.rewards, reward],
-    });
-    setEditing(null);
+    const saved = commands
+      ? await commands.reward(reward)
+      : await update({
+          ...state,
+          rewards: editing.id
+            ? state.rewards.map((r) => (r.id === reward.id ? reward : r))
+            : [...state.rewards, reward],
+        });
+    if (saved) setEditing(null);
+  }
+  function resolveReward(
+    id: string,
+    action: "approve" | "decline" | "fulfill",
+  ) {
+    if (commands) void commands.resolve(id, action);
+    else safely(() => resolve(state, id, action, new Date().toISOString()));
   }
   return (
     <>
@@ -106,9 +127,18 @@ export default function Parent({
       <div className="notice parent-notice">
         <ShieldCheck size={20} />
         <span>
-          <strong>Demo parent preview · no authentication.</strong> All data and
-          approvals are editable in this browser. Firebase access is disabled
-          until verified.
+          {cloud ? (
+            <>
+              <strong>Verified parent access.</strong> Changes are checked by
+              Firestore security rules and saved to your private family profile.
+            </>
+          ) : (
+            <>
+              <strong>Demo parent preview · no authentication.</strong> All data
+              and approvals are editable in this browser. Firebase access is
+              disabled until verified.
+            </>
+          )}
         </span>
       </div>
       <div className="parent-tabs" role="tablist" aria-label="Parent sections">
@@ -447,12 +477,16 @@ export default function Parent({
                     className="icon-button"
                     aria-label={`${r.archived ? "Restore" : "Archive"} ${r.title}`}
                     onClick={() =>
-                      update({
-                        ...state,
-                        rewards: state.rewards.map((x) =>
-                          x.id === r.id ? { ...x, archived: !x.archived } : x,
-                        ),
-                      })
+                      commands
+                        ? commands.reward({ ...r, archived: !r.archived })
+                        : update({
+                            ...state,
+                            rewards: state.rewards.map((x) =>
+                              x.id === r.id
+                                ? { ...x, archived: !x.archived }
+                                : x,
+                            ),
+                          })
                     }
                   >
                     {r.archived ? <Plus size={18} /> : <Archive size={18} />}
@@ -504,16 +538,7 @@ export default function Parent({
                     {r.status === "pending" && (
                       <button
                         className="primary"
-                        onClick={() =>
-                          safely(() =>
-                            resolve(
-                              state,
-                              r.id,
-                              "approve",
-                              new Date().toISOString(),
-                            ),
-                          )
-                        }
+                        onClick={() => resolveReward(r.id, "approve")}
                       >
                         <Check size={15} /> Approve
                       </button>
@@ -521,16 +546,7 @@ export default function Parent({
                     {r.status === "approved" && (
                       <button
                         className="primary"
-                        onClick={() =>
-                          safely(() =>
-                            resolve(
-                              state,
-                              r.id,
-                              "fulfill",
-                              new Date().toISOString(),
-                            ),
-                          )
-                        }
+                        onClick={() => resolveReward(r.id, "fulfill")}
                       >
                         Mark fulfilled
                       </button>
@@ -538,16 +554,7 @@ export default function Parent({
                     {(r.status === "pending" || r.status === "approved") && (
                       <button
                         className="secondary"
-                        onClick={() =>
-                          safely(() =>
-                            resolve(
-                              state,
-                              r.id,
-                              "decline",
-                              new Date().toISOString(),
-                            ),
-                          )
-                        }
+                        onClick={() => resolveReward(r.id, "decline")}
                       >
                         Decline & refund
                       </button>
@@ -572,17 +579,20 @@ export default function Parent({
             </div>
             <form
               className="adjust-form"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                safely(() =>
-                  adjust(
-                    state,
-                    Number(amount),
-                    reason,
-                    crypto.randomUUID(),
-                    new Date().toISOString(),
-                  ),
-                );
+                if (commands) {
+                  if (!(await commands.adjust(Number(amount), reason))) return;
+                } else
+                  safely(() =>
+                    adjust(
+                      state,
+                      Number(amount),
+                      reason,
+                      crypto.randomUUID(),
+                      new Date().toISOString(),
+                    ),
+                  );
                 setAmount("");
                 setReason("");
               }}
@@ -660,7 +670,7 @@ export default function Parent({
             earned achievements.
           </p>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               const data = new FormData(e.currentTarget);
               try {
@@ -668,7 +678,7 @@ export default function Parent({
                   state.settings.curriculum,
                   planDraft,
                 );
-                const savedOk = update({
+                const next = {
                   ...state,
                   nickname: String(data.get("nickname")).trim() || "Explorer",
                   settings: {
@@ -676,12 +686,15 @@ export default function Parent({
                     dailyCap: Number(data.get("cap")),
                     weeklySessions: Number(data.get("goal")),
                   },
-                });
+                };
+                const savedOk = commands
+                  ? await commands.settings(next)
+                  : await update(next);
                 if (savedOk) {
                   setPlanDraft(curriculum);
                   setSettingsError("");
                   setSaved(
-                    `Learning plan ${curriculum.revision} saved on this device. It applies to the next adventure; an active adventure keeps its original plan.`,
+                    `Learning plan ${curriculum.revision} saved${cloud ? " to your family cloud profile" : " on this device"}. It applies to the next adventure; an active adventure keeps its original plan.`,
                   );
                 }
               } catch (error) {

@@ -10,7 +10,7 @@ import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 let env: RulesTestEnvironment;
 beforeAll(async () => {
   env = await initializeTestEnvironment({
-    projectId: "demo-math-quest",
+    projectId: "demo-math-quest-legacy",
     firestore: {
       rules: readFileSync("firestore.rules", "utf8"),
       host: "127.0.0.1",

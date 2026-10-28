@@ -1,0 +1,273 @@
+// Spark-only authority. Every economy write is coupled to a validated immutable
+// attempt/request/ledger operation with getAfter(), never a client role flag.
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function min(a,b) { return a<b?a:b; }
+  function max(a,b) { return a>b?a:b; }
+  function signed() { return request.auth != null; }
+  function parent(owner) {
+   return signed() && request.auth.uid == owner && request.auth.token.email_verified == true
+    && request.auth.token.firebase.sign_in_provider == 'password'
+    && request.time.toMillis() / 1000 - request.auth.token.auth_time < 3600;
+  }
+  function binding() { return get(/databases/$(database)/documents/sparkDevices/$(request.auth.uid)).data; }
+  function member(owner,child) {
+   return parent(owner) || (signed() && request.auth.token.firebase.sign_in_provider == 'anonymous'
+    && binding().parentUid == owner && binding().childId == child
+    && binding().revoked == false && binding().expiresAt > request.time);
+  }
+  function cp(o,c) { return /databases/$(database)/documents/familiesV2/$(o)/children/$(c); }
+  function dp(o,c,k,id) { return /databases/$(database)/documents/familiesV2/$(o)/children/$(c)/$(k)/$(id); }
+  function whole(n,lo,hi) { return n is int && n >= lo && n <= hi; }
+  function short(s,n) { return s is string && s.size() > 0 && s.size() <= n; }
+  function skill(s) { return s in ['addition','subtraction','multiplication','division']; }
+  function appearance(a) {
+   return a.keys().hasOnly(['outfit','accent','hat','glasses','move','sky','motion','voice'])
+    && a.keys().size()==8 && a.outfit in ['explorer','wizard','astronaut','raincoat']
+    && a.accent in ['mint','violet','sunshine','berry'] && a.hat in ['none','cap','crown','flower']
+    && a.glasses is bool && a.move in ['hop','twirl','stars','dance','wave']
+    && a.sky in ['day','sunset','starlight'] && a.motion in ['playful','calm','still'] && a.voice in ['off','soft','chirpy'];
+  }
+  function plan(p) {
+   return p.keys().hasOnly(['revision','focusSkill','enabledSkills','maxFactor','mode']) && p.keys().size()==5
+    && whole(p.revision,1,1000000) && skill(p.focusSkill) && p.enabledSkills is list
+    && p.enabledSkills.size()>=1 && p.enabledSkills.size()<=4
+    && p.enabledSkills.toSet().size()==p.enabledSkills.size()
+    && p.enabledSkills.hasOnly(['addition','subtraction','multiplication','division'])
+    && p.focusSkill in p.enabledSkills && whole(p.maxFactor,5,12) && p.mode in ['adaptive','full-range'];
+  }
+  function settings(s) { return s.keys().hasOnly(['dailyCap','weeklySessions','curriculum']) && s.keys().size()==3
+   && whole(s.dailyCap,0,200) && whole(s.weeklySessions,1,14) && plan(s.curriculum); }
+  function profile(d) { return d.keys().hasOnly(['nickname','appearance','goalId','settings','createdAt']) && d.keys().size()==5
+   && short(d.nickname,24) && appearance(d.appearance) && (d.goalId == null || short(d.goalId,80)) && settings(d.settings); }
+  function zeros() { return {'addition-1':0,'addition-2':0,'addition-3':0,'subtraction-1':0,'subtraction-2':0,'subtraction-3':0,'multiplication-1':0,'multiplication-2':0,'multiplication-3':0,'division-1':0,'division-2':0,'division-3':0}; }
+  function wallet(d) { return d.keys().hasOnly(['balance','total','day','earned','counts','lastOp','updatedAt']) && d.keys().size()==7
+   && whole(d.balance,0,1000000000) && whole(d.total,0,1000000000) && whole(d.day,0,1000000)
+   && whole(d.earned,0,200) && d.counts is map && d.counts.keys().hasOnly(zeros().keys()) && d.counts.keys().size()==12
+   && d.lastOp is string && d.lastOp.size()<=100 && d.updatedAt==request.time; }
+  function correct(q,n) { return n is int && (
+   (q.skill=='addition' && n==q.a+q.b) || (q.skill=='subtraction' && n==q.a-q.b)
+   || (q.skill=='multiplication' && n==q.a*q.b) || (q.skill=='division' && n*q.b==q.a)); }
+  function qkey(q) { return (q.skill in ['addition','multiplication'])
+   ? q.skill+'-'+string(min(q.a,q.b))+'-'+string(max(q.a,q.b)) : q.skill+'-'+string(q.a)+'-'+string(q.b); }
+  function question(q,s,level) {
+   let max=s.plan.maxFactor;
+   let effective=s.skill=='multiplication' && s.plan.mode=='full-range'?3:level;
+   let limit=effective==1?20:(effective==2?100:1000);
+   return q.keys().hasOnly(['id','skill','level','a','b','answer','symbol','hint','explanation','story','planRevision','maxFactor','selection'])
+    && q.id==s.id+'-'+string(s.index) && q.skill==s.skill && q.level==effective
+    && q.planRevision==s.plan.revision && short(q.hint,1500) && short(q.explanation,1500)
+    && (!('story' in q) || short(q.story,1000)) && q.selection in ['review','explore']
+    && whole(q.a,1,1000) && whole(q.b,1,1000) && whole(q.answer,0,1000) && correct(q,q.answer)
+    && ((s.skill=='multiplication' && q.symbol=='×' && q.maxFactor==max
+      && q.a <= (effective==1?3:(effective==2?5:max)) && q.b <= (effective==1?5:max))
+     || (s.skill=='addition' && q.symbol=='+' && q.a+q.b<=limit)
+     || (s.skill=='subtraction' && q.symbol=='−' && q.a>=q.b && q.a<=limit)
+     || (s.skill=='division' && q.symbol=='÷' && q.b<=(effective==1?3:(effective==2?5:10)) && q.answer>=1 && q.answer<=(effective==1?5:10)));
+  }
+  function baseSession(s,id) {
+   // Used only on creation. Exact zero/false values and the already-validated
+   // parent plan are checked by the create rule, avoiding duplicate evaluation.
+   return s.keys().hasOnly(['id','skill','seed','index','question','plan','asked','hints','wrongs','first','answered','finished','independent','coins','action','eventId','createdAt','updatedAt'])
+    && s.keys().size()==18 && s.id==id && whole(s.seed,1,1000000000)
+    && s.asked is list && s.asked.size()==1 && s.asked[0]==qkey(s.question) && s.updatedAt==request.time;
+  }
+  function award(o,c,a,w) {
+   let day=int(request.time.toMillis() / 86400000);
+   let earned=w.day==day?w.earned:0;
+   let count=w.day==day?w.counts[a.skill+'-'+string(a.level)]:0;
+   let cap=get(cp(o,c)).data.settings.dailyCap;
+   return count>=5 ? 0 : max(0,min(a.independent?3:1,min(cap-earned,1000000000-w.balance)));
+  }
+  function validAttempt(o,c,a,id) {
+   let s=get(dp(o,c,'sessions',a.sessionId)).data;
+   let after=getAfter(dp(o,c,'sessions',a.sessionId)).data;
+   let w=get(dp(o,c,'wallet','current')).data;
+   return a.keys().hasOnly(['id','sessionId','skill','level','question','firstAnswer','independent','hints','wrongAnswers','coins','answer','at']) && a.keys().size()==12
+    && id==s.question.id && a.id==id && a.question==s.question && a.skill==s.skill && a.level==s.question.level
+    && !s.answered && !s.finished && s.createdAt+duration.value(24,'h')>request.time
+    && a.hints==s.hints && a.wrongAnswers==s.wrongs && a.independent==(s.hints==0 && s.wrongs==0)
+    && a.firstAnswer==(s.first==''?string(a.answer):s.first) && correct(s.question,a.answer)
+    && a.coins==award(o,c,a,w) && a.at==request.time && after.action=='correct' && after.question==s.question && after.answered;
+  }
+  function progressShape(p) { return p.keys().hasOnly(['level','independent','advanced','advancedSessions','stars','mastered','streak','lastAttempt']) && p.keys().size()==8
+   && whole(p.level,1,3) && whole(p.independent,0,1000000000) && whole(p.advanced,0,1000000000)
+   && p.advancedSessions is list && p.advancedSessions.size()<=2 && p.advancedSessions.toSet().size()==p.advancedSessions.size()
+   && whole(p.stars,0,3) && p.mastered is bool && whole(p.streak,0,1000000000) && p.lastAttempt is string; }
+  function progressUpdate(o,c,s,p,old) {
+   let a=getAfter(dp(o,c,'attempts',p.lastAttempt)).data;
+   let streak=a.independent?old.streak+1:0;
+   let level=streak>=3 && old.level<3?old.level+1:old.level;
+   let advanced=old.advanced+(a.independent && a.level==3?1:0);
+   let sessions=a.independent && a.level==3 && !(a.sessionId in old.advancedSessions) && old.advancedSessions.size()<2?old.advancedSessions.concat([a.sessionId]):old.advancedSessions;
+   let independent=old.independent+(a.independent?1:0);
+   return a.skill==s && !exists(dp(o,c,'attempts',p.lastAttempt)) && p.level==level && p.streak==(level>old.level?0:streak)
+    && p.independent==independent && p.advanced==advanced && p.advancedSessions==sessions
+    && p.stars==max(old.stars,min(3,int(independent / 3))) && p.mastered==(old.mastered || (advanced>=8 && sessions.size()>=2));
+  }
+  function reward(d) { return d.keys().hasOnly(['id','title','description','cost','emoji','approved','archived','available','limit','used']) && d.keys().size()==10
+   && short(d.id,80) && short(d.title,100) && d.description is string && d.description.size()<=1000 && short(d.emoji,20)
+   && whole(d.cost,1,1000000) && d.approved is bool && d.archived is bool && d.available is bool && whole(d.limit,0,1000000) && whole(d.used,0,1000000); }
+  function ledger(o,c,l,id) {
+   let w=getAfter(dp(o,c,'wallet','current')).data;
+   return l.keys().hasOnly(['kind','amount','reason','ref','at']) && l.keys().size()==5 && l.kind in ['practice','request','refund','adjust']
+    && whole(l.amount,-1000000,1000000) && short(l.reason,200) && short(l.ref,100) && l.at==request.time && w.lastOp==id;
+  }
+  function walletPractice(o,c,d,w,l) {
+   let a=getAfter(dp(o,c,'attempts',l.ref)).data;
+   let day=int(request.time.toMillis() / 86400000);
+   let counts=w.day==day?w.counts:zeros();
+   let bucket=a.skill+'-'+string(a.level);
+   return !exists(dp(o,c,'attempts',l.ref)) && a.coins==l.amount && l.reason==a.skill+' practice'+(a.independent?'':' · perseverance') && l.amount>=0 && d.balance==w.balance+l.amount && d.total==w.total+1
+    && d.day==day && d.earned==(w.day==day?w.earned:0)+l.amount && d.counts.diff(counts).affectedKeys().hasOnly([bucket])
+    && d.counts[bucket]==counts[bucket]+(l.amount>0?1:0)
+    && getAfter(dp(o,c,'progress',a.skill)).data.lastAttempt==l.ref;
+  }
+  function walletRequest(o,c,d,w,l) {
+   let r=getAfter(dp(o,c,'requests',l.ref)).data;
+   let before=exists(dp(o,c,'requests',l.ref));
+   return l.kind=='request'?(!before && r.status=='pending' && l.reason=='Requested: '+r.title && l.amount== -r.cost && d.balance==w.balance-r.cost)
+    :(parent(o) && before && get(dp(o,c,'requests',l.ref)).data.status in ['pending','approved'] && r.status=='declined'
+     && l.reason=='Refund: '+r.title && l.amount==r.cost && d.balance==w.balance+r.cost);
+  }
+  match /sparkDevices/{device} {
+   allow get: if signed() && (request.auth.uid==device || (parent(request.auth.uid)
+    && (!exists(/databases/$(database)/documents/sparkDevices/$(device)) || resource.data.parentUid==request.auth.uid)));
+   allow list: if signed() && parent(resource.data.parentUid);
+   allow create: if parent(request.resource.data.parentUid)
+    && request.resource.data.keys().hasOnly(['parentUid','childId','expiresAt','revoked','createdAt']) && request.resource.data.keys().size()==5
+    && request.resource.data.childId=='explorer' && request.resource.data.createdAt==request.time && request.resource.data.revoked==false
+    && request.resource.data.expiresAt>request.time && request.resource.data.expiresAt<=request.time+duration.value(31,'d')
+    && exists(cp(request.resource.data.parentUid,request.resource.data.childId));
+   allow update: if parent(resource.data.parentUid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked','expiresAt'])
+    && request.resource.data.revoked is bool && request.resource.data.expiresAt<=request.time+duration.value(31,'d');
+  }
+  match /familiesV2/{owner}/children/{child} {
+   allow get: if member(owner,child);
+   allow list: if parent(owner);
+   allow create: if parent(owner) && child=='explorer' && profile(request.resource.data) && request.resource.data.createdAt==request.time;
+   allow update: if member(owner,child) && profile(request.resource.data)
+    && request.resource.data.createdAt==resource.data.createdAt
+    && ((parent(owner) && request.resource.data.settings.curriculum.revision==resource.data.settings.curriculum.revision+
+     (request.resource.data.settings.curriculum.diff(resource.data.settings.curriculum).affectedKeys().hasAny(['focusSkill','enabledSkills','maxFactor','mode'])?1:0))
+     || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['appearance','goalId']));
+   match /runtime/{id} {
+    allow read: if member(owner,child);
+    allow create: if parent(owner) && id=='current' && request.resource.data=={'sessionId':'','updatedAt':request.time};
+    allow update: if member(owner,child) && id=='current' && request.resource.data.keys().hasOnly(['sessionId','updatedAt'])
+     && request.resource.data.updatedAt==request.time && short(request.resource.data.sessionId,80)
+     && !exists(dp(owner,child,'sessions',request.resource.data.sessionId))
+     && getAfter(dp(owner,child,'sessions',request.resource.data.sessionId)).data.action=='start'
+     && (resource.data.sessionId=='' || get(dp(owner,child,'sessions',resource.data.sessionId)).data.finished
+      || get(dp(owner,child,'sessions',resource.data.sessionId)).data.createdAt+duration.value(24,'h')<=request.time);
+   }
+   match /sessions/{id} {
+    allow read: if member(owner,child);
+    allow create: if member(owner,child) && baseSession(request.resource.data,id)
+     && request.resource.data.plan==get(cp(owner,child)).data.settings.curriculum && request.resource.data.skill in request.resource.data.plan.enabledSkills
+     && request.resource.data.index==0 && request.resource.data.hints==0 && request.resource.data.wrongs==0 && request.resource.data.first==''
+     && !request.resource.data.answered && !request.resource.data.finished && request.resource.data.independent==0 && request.resource.data.coins==0
+     && request.resource.data.action=='start' && request.resource.data.eventId=='' && request.resource.data.createdAt==request.time
+     && question(request.resource.data.question,request.resource.data,get(dp(owner,child,'progress',request.resource.data.skill)).data.level)
+     && getAfter(dp(owner,child,'runtime','current')).data.sessionId==id;
+    allow update: if member(owner,child) && request.resource.data.updatedAt==request.time && request.resource.data.eventId is string && request.resource.data.eventId.size()<=100
+     && get(dp(owner,child,'runtime','current')).data.sessionId==id && !resource.data.finished
+     && resource.data.createdAt+duration.value(24,'h')>request.time
+     && request.resource.data.plan==resource.data.plan && request.resource.data.createdAt==resource.data.createdAt
+     && request.resource.data.skill==resource.data.skill && request.resource.data.seed==resource.data.seed
+     && sessionChange(owner,child,request.resource.data,resource.data);
+   }
+   match /attempts/{id} { allow read: if member(owner,child); allow create: if member(owner,child) && validAttempt(owner,child,request.resource.data,id)
+    && getAfter(dp(owner,child,'wallet','current')).data.lastOp=='earn-'+id
+    && getAfter(dp(owner,child,'progress',request.resource.data.skill)).data.lastAttempt==id
+    && getAfter(dp(owner,child,'facts',qkey(request.resource.data.question))).data.lastAttempt==id; }
+   match /events/{id} {
+    allow read: if member(owner,child);
+    allow create: if member(owner,child) && eventValid(owner,child,request.resource.data,id);
+   }
+   match /progress/{s} {
+    allow read: if member(owner,child);
+    allow create: if parent(owner) && skill(s) && progressShape(request.resource.data) && request.resource.data=={'level':1,'independent':0,'advanced':0,'advancedSessions':[],'stars':0,'mastered':false,'streak':0,'lastAttempt':''};
+    allow update: if member(owner,child) && skill(s) && progressShape(request.resource.data) && progressUpdate(owner,child,s,request.resource.data,resource.data);
+   }
+   match /facts/{id} {
+    allow read: if member(owner,child);
+    allow create,update: if member(owner,child) && factValid(owner,child,id,request.resource.data);
+   }
+   match /wallet/{id} {
+    allow read: if member(owner,child);
+    allow create: if parent(owner) && id=='current' && wallet(request.resource.data) && request.resource.data.balance==0 && request.resource.data.total==0 && request.resource.data.day==0 && request.resource.data.earned==0 && request.resource.data.counts==zeros() && request.resource.data.lastOp=='';
+    allow update: if member(owner,child) && id=='current' && wallet(request.resource.data) && walletChange(owner,child,request.resource.data,resource.data);
+   }
+   match /ledger/{id} { allow read: if member(owner,child); allow create: if member(owner,child) && ledger(owner,child,request.resource.data,id); }
+   match /rewards/{id} {
+    allow read: if member(owner,child);
+    allow create: if parent(owner) && reward(request.resource.data) && request.resource.data.id==id && request.resource.data.used==0;
+    allow update: if member(owner,child) && reward(request.resource.data) && request.resource.data.id==id
+     && ((parent(owner) && request.resource.data.used==resource.data.used) || rewardUsage(owner,child,id,request.resource.data,resource.data));
+   }
+   match /requests/{id} { allow read: if member(owner,child); allow create: if member(owner,child) && requestCreate(owner,child,id,request.resource.data); allow update: if parent(owner) && requestChange(owner,child,id,request.resource.data,resource.data); }
+  }
+  function sessionChange(o,c,d,s) {
+   let basic=d.diff(s).affectedKeys();
+   return d.action=='hint' ? (!s.answered && s.hints<50 && basic.hasOnly(['action','eventId','hints','updatedAt']) && d.hints==s.hints+1 && getAfter(dp(o,c,'events',d.eventId)).data.kind=='hint')
+    : d.action=='wrong' ? (!s.answered && s.wrongs<1000 && basic.hasOnly(['action','eventId','wrongs','first','updatedAt']) && d.wrongs==s.wrongs+1
+     && d.first==(s.first==''?string(getAfter(dp(o,c,'events',d.eventId)).data.numericAnswer):s.first) && getAfter(dp(o,c,'events',d.eventId)).data.correct==false)
+    : d.action=='correct' ? (!s.answered && basic.hasOnly(['action','eventId','answered','independent','coins','updatedAt']) && d.answered
+     && !exists(dp(o,c,'attempts',s.question.id)) && getAfter(dp(o,c,'attempts',s.question.id)).data.sessionId==s.id && d.coins==s.coins+getAfter(dp(o,c,'attempts',s.question.id)).data.coins && d.independent==s.independent+(getAfter(dp(o,c,'attempts',s.question.id)).data.independent?1:0)
+     && getAfter(dp(o,c,'events',d.eventId)).data.correct==true)
+    : d.action=='next' ? (s.answered && s.index<9 && basic.hasOnly(['action','eventId','index','question','asked','hints','wrongs','first','answered','updatedAt'])
+     && d.index==s.index+1 && d.hints==0 && d.wrongs==0 && d.first=='' && !d.answered && d.eventId==''
+     && !(qkey(d.question) in s.asked) && d.asked==s.asked.concat([qkey(d.question)]) && question(d.question,d,get(dp(o,c,'progress',d.skill)).data.level))
+    : (d.action=='finish' && s.answered && s.index==9 && basic.hasOnly(['action','finished','updatedAt']) && d.finished);
+  }
+  function eventValid(o,c,e,id) {
+   let s=get(dp(o,c,'sessions',e.sessionId)).data;
+   let after=getAfter(dp(o,c,'sessions',e.sessionId)).data;
+   return e.keys().hasOnly(['questionId','sessionId','question','kind','answer','correct','numericAnswer','at']) && e.keys().size()==8
+    && e.questionId==s.question.id && e.question=={'a':s.question.a,'b':s.question.b,'symbol':s.question.symbol,'skill':s.skill}
+    && e.at==request.time && e.answer is string && e.answer.size()<=10 && e.numericAnswer is int && after.eventId==id
+    && ((e.kind=='hint' && e.answer=='' && e.numericAnswer==0 && e.correct==false && after.action=='hint')
+     || (e.kind=='answer' && e.answer==string(e.numericAnswer) && e.correct==correct(s.question,e.numericAnswer) && after.action==(e.correct?'correct':'wrong')));
+  }
+  function factValid(o,c,id,d) {
+   let a=getAfter(dp(o,c,'attempts',d.lastAttempt)).data;
+   let old=exists(dp(o,c,'facts',id))?get(dp(o,c,'facts',id)).data:{'count':0,'independentStreak':0,'tricky':false};
+   let streak=a.independent?old.independentStreak+1:0;
+   return d.keys().hasOnly(['count','independentStreak','tricky','last','lastAttempt']) && d.keys().size()==5
+    && id==qkey(a.question) && !exists(dp(o,c,'attempts',d.lastAttempt)) && d.count==old.count+1 && d.independentStreak==streak
+    && d.tricky==(!a.independent || (old.tricky && streak<2)) && d.last==getAfter(dp(o,c,'wallet','current')).data.total;
+  }
+  function walletChange(o,c,d,w) {
+   let l=getAfter(dp(o,c,'ledger',d.lastOp)).data;
+   return !exists(dp(o,c,'ledger',d.lastOp)) && ledger(o,c,l,d.lastOp)
+    && ((l.kind=='practice' && walletPractice(o,c,d,w,l))
+     || (d.total==w.total && d.day==w.day && d.earned==w.earned && d.counts==w.counts
+      && ((l.kind in ['request','refund'] && walletRequest(o,c,d,w,l)) || (l.kind=='adjust' && parent(o) && l.amount!=0 && d.balance==w.balance+l.amount))));
+  }
+  function requestCreate(o,c,id,d) {
+   let r=get(dp(o,c,'rewards',d.rewardId)).data;
+   return d.keys().hasOnly(['id','rewardId','title','cost','status','at','updatedAt']) && d.keys().size()==7
+    && d.id==id && short(id,80) && d.status=='pending' && d.title==r.title && d.cost==r.cost && d.at==request.time && d.updatedAt==request.time
+    && r.approved && !r.archived && r.available && (r.limit==0 || r.used<r.limit)
+    && getAfter(dp(o,c,'rewards',d.rewardId)).data.used==r.used+1
+    && getAfter(dp(o,c,'wallet','current')).data.lastOp=='spend-'+id;
+  }
+  function requestChange(o,c,id,d,r) {
+   return d.diff(r).affectedKeys().hasOnly(['status','updatedAt']) && d.updatedAt==request.time
+    && ((r.status=='pending' && d.status=='approved') || (r.status=='approved' && d.status=='fulfilled')
+     || (r.status in ['pending','approved'] && d.status=='declined' && getAfter(dp(o,c,'wallet','current')).data.lastOp=='refund-'+id
+      && getAfter(dp(o,c,'rewards',r.rewardId)).data.used==get(dp(o,c,'rewards',r.rewardId)).data.used-1));
+  }
+  function rewardUsage(o,c,id,d,r) {
+   let w=getAfter(dp(o,c,'wallet','current')).data;
+   let l=getAfter(dp(o,c,'ledger',w.lastOp)).data;
+   let req=getAfter(dp(o,c,'requests',l.ref)).data;
+   return d.diff(r).affectedKeys().hasOnly(['used']) && req.rewardId==id
+    && ((l.kind=='request' && !exists(dp(o,c,'requests',l.ref)) && d.used==r.used+1)
+     || (parent(o) && l.kind=='refund' && get(dp(o,c,'requests',l.ref)).data.status in ['pending','approved'] && req.status=='declined' && d.used==r.used-1));
+  }
+  match /{document=**} { allow read,write: if false; }
+ }
+}
