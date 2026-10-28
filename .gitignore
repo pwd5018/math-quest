@@ -13,3 +13,4 @@ dist/
 functions/lib/
 *.tsbuildinfo
 artifacts/
+.codex-attachments/

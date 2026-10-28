@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Map,
   BookOpen,
@@ -109,6 +109,7 @@ const regions = [
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 export type CloudBridge = {
+  parentControls?: ReactNode;
   state: State;
   repo: CloudRepository;
   parent: boolean;
@@ -140,6 +141,28 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
   const [toast, setToast] = useState(loaded.warning || "");
   const [parentGate, setParentGate] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  useEffect(() => {
+    const mobile = window.matchMedia("(max-width: 580px)");
+    if (!mobileNav || !mobile.matches) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileNav(false);
+        document.querySelector<HTMLButtonElement>(".mobile-menu")?.focus();
+      }
+    };
+    document.addEventListener("keydown", close);
+    const resize = () => {
+      if (!mobile.matches) setMobileNav(false);
+    };
+    mobile.addEventListener("change", resize);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", close);
+      mobile.removeEventListener("change", resize);
+    };
+  }, [mobileNav]);
   const [run, setRun] = useState<Run | null>(
     cloud?.repo.active ? liveRun(cloud.repo.active) : null,
   );
@@ -553,6 +576,13 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
           </div>
         </div>
       </aside>
+      {mobileNav && (
+        <button
+          className="nav-scrim"
+          aria-label="Close menu overlay"
+          onClick={() => setMobileNav(false)}
+        />
+      )}
       <div className="workspace">
         <header className="topbar">
           <button
@@ -562,7 +592,7 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
             aria-controls="adventure-sidebar"
             onClick={() => setMobileNav(!mobileNav)}
           >
-            <Menu />
+            {mobileNav ? <X /> : <Menu />}
           </button>
           <div className="breadcrumb">
             <span className="breadcrumb-long">YOUR LEARNING ADVENTURE</span>
@@ -628,7 +658,14 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
             </button>
           </div>
         </header>
-        <main id="main-content" tabIndex={-1}>
+        {cloud?.parentControls && (
+          <div inert={mobileNav ? true : undefined}>{cloud.parentControls}</div>
+        )}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          inert={mobileNav ? true : undefined}
+        >
           {page === "map" && (
             <>
               <section className="page-heading">

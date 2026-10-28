@@ -334,8 +334,9 @@ export default function CloudApp() {
       onLeave: () => void execute(leaveParent),
       onChange: async (fn) => execute(fn),
     };
-    return (
+    bridge.parentControls = (
       <>
+        {" "}
         {mode === "parent" && (
           <section
             className="cloud-family-bar"
@@ -387,7 +388,11 @@ export default function CloudApp() {
               ))}
             </details>
           </section>
-        )}
+        )}{" "}
+      </>
+    );
+    return (
+      <>
         <fieldset
           className="cloud-app-fieldset"
           disabled={busy}

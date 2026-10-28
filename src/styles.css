@@ -117,8 +117,31 @@ label small {
   line-height: 1.5;
 }
 .app-shell {
+  --mobile-header-height: 67px;
   display: flex;
   min-height: 100vh;
+}
+.nav-scrim {
+  display: none;
+}
+@media (max-width: 580px) {
+  .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: var(--mobile-header-height) 0 0 240px;
+    z-index: 19;
+    background: #203d354d;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+  }
+  .app-shell .sidebar.open {
+    top: var(--mobile-header-height);
+    bottom: 0;
+    height: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 .sidebar {
   width: 246px;
