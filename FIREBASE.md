@@ -54,6 +54,19 @@ npm.cmd run build
 
 ## Build and publish
 
+### Costume-pack update: deploy rules before Hosting
+
+The React Three Fiber/pack update adds bounded per-child `packCatalog/{packId}` configuration and immutable `cosmetics/{packId}` ownership. Parents configure price/enabled state; members buy with an atomic wallet/`pack-<id>` ledger/ownership transaction. Security rules check price, enabled state, one-time ownership, wallet conservation and ownership before equipping special costumes. Existing profile documents do not require a schema migration, and existing family rewards/goals retain their behavior.
+
+The owner approved this production release on October 30, 2026. The tested pack/ownership and voice rules were successfully deployed to `math-quest-2d6e5` before pushing the application. The existing GitHub identity intentionally publishes Hosting only. For future rules changes, retain this rules-first sequence:
+
+```powershell
+npm.cmd run firebase:rules:test
+npm.cmd exec firebase -- deploy --only firestore:rules --project math-quest-2d6e5
+```
+
+Then commit/push the reviewed application through the existing Hosting workflow and check the first real purchase with a parent-configured price. Do not grant CI broader roles as a workaround. If collection access is unavailable during rollout, the client keeps ordinary practice/rewards working and disables pack purchasing/configuration with an explanatory notice. After the rules update, reload the client to re-establish collection listeners.
+
 1. Complete `.env.local` from the registered web app's public SDK configuration. Keep it ignored. The deployed app uses only API key, auth domain, project ID and app ID; it does not initialize Analytics.
 2. Run the tests above, then `npm.cmd run build:cloud`. This forces live mode and disables emulator connections for that build. It rejects missing configuration and demo project IDs.
 3. Publish only the Spark services:
@@ -73,6 +86,6 @@ Spark has usage quotas. Hosting traffic, Auth activity, rule document lookups, l
 
 The app is backed up on `codex/math-quest-firebase`, the verified default/release branch. The updated GitHub Actions workflow validates tests, the Hosting verifier, typecheck, builds and emulator rules on pushes/PRs. Successful release-branch pushes can then perform a cloud build, keyless Google authentication, Hosting-only publication and byte-for-byte release verification. Pull requests and other branches never publish. Manual runs on the release branch are also supported.
 
-**Activation is pending:** this workflow change has not been pushed, and the dedicated Google Cloud identity and GitHub `production` variables have not been configured or tested remotely. [GITHUB-DEPLOYMENT.md](GITHUB-DEPLOYMENT.md) contains the exact one-time connection recipe, scoped IAM roles and repository/workflow/branch trust conditions. Auth/rules/indexes and legacy Functions are outside this automated publication job; billing is unchanged.
+**Hosting automation is active:** the owner configured Google Cloud identity and GitHub production variables, and run 40991771106 successfully published commit 4b31b6d. The later play-area/pack/voice update was approved for publication on October 30, 2026, with its security rules deployed first. Hosting publication and file verification run through the workflow below. [GITHUB-DEPLOYMENT.md](GITHUB-DEPLOYMENT.md) contains the exact one-time connection recipe, scoped IAM roles and repository/workflow/branch trust conditions. Auth/rules/indexes and legacy Functions are outside this automated publication job; billing is unchanged.
 
 Official references: [Spark pricing](https://firebase.google.com/pricing), [atomic rules validation](https://firebase.google.com/docs/firestore/security/rules-conditions), [Auth persistence](https://firebase.google.com/docs/auth/web/auth-state-persistence), [anonymous identities](https://firebase.google.com/docs/auth/web/anonymous-auth).

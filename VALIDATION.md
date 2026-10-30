@@ -1,5 +1,30 @@
 # Executed validation
 
+## Approved production release — October 30, 2026
+
+The owner approved production publication after local review. `firebase deploy --only firestore:rules --project math-quest-2d6e5 --non-interactive` compiled and successfully released the tested pack/ownership and saved-voice rules. The app release-branch push follows this rules deployment; GitHub Actions must validate, publish Hosting and verify the released files before Hosting success is claimed. Earlier local-only statements below describe the review stage.
+
+## Responsive Pip slice — October 30, 2026
+
+- **80/80 unit tests passed**, 11 files. New checks cover short reaction envelopes, nonrepeating variants, semantic tags on the rendered articulated model, continuous ball pickup/return, saved voice restoration and distinct bounded audio waveforms.
+- **26/26 Firestore emulator tests passed**, two files, including all three new voice preference values, unchanged wallet balance and denial of an unknown voice. This is emulator evidence; no production rules were deployed.
+- Final TypeScript and production cloud build passed. Play chunk approximately 223 kB minified / 71 kB gzip. Existing large-chunk advisories remain. Restricted child-process startup returned EPERM for Vite/Vitest; approved execution completed successfully.
+- Local DEMO browser checks directly picked tummy, eye and nose with distinct feedback, chose a ground throw and interrupted fetch with a high-five. Removed the rectangular contact-shadow artifact during visual review.
+- Inspected all four scene layouts. At 390 × 844, the page scroll width and client width were both 375 CSS pixels; the scene measured 337 pixels. Robot voice persisted after reload; global mute changed the play selector to sound off. Browser error logs were empty. Review images: `artifacts/pip-woodland-v2.png`, `pip-glade-v2.png`, `pip-rain-v2.png`, `pip-moon-v2.png` and `pip-mobile-v2.png` in the same directory. Temporary viewport override was reset and preview services were stopped.
+- Generated `artifacts/pip-voices-preview.wav`: hello/giggle/sniff in five styles. Waveform checks and export do not prove subjective sound quality or human listening acceptance.
+- Production preferences/purchases, physical touchscreen/GPU/battery performance, measured frame-time targets and human audio acceptance remain unexecuted. Nothing committed, pushed or deployed; keep local for owner review.
+
+## React Three Fiber play area and costume packs — October 29, 2026
+
+- **76/76 unit tests passed**, ten files. New business tests cover exact one-time debits, closed/insufficient/unknown packs, stale displayed prices, ownership-gated equip, free packs, price validation, independence from goals/requests/progress and bounded, varied session-seeded behavior. The existing geometry test now builds all 28 outfits with every hat and glasses.
+- **25/25 Firestore emulator tests passed**, two files. New cases exercise paid/free pack purchases, replay, persisted ownership/equip after closing/repricing, child catalog-edit denial, unowned equip denial, forged ownership and coordinated underpayment, simultaneous overspending, and unbound-user isolation. A rollout fixture denies only the new collections and confirms regular practice still earns its valid award while pack support is disabled.
+- The initial free-pack emulator case caught JavaScript negative zero being encoded as a floating-point ledger amount. The purchase code now explicitly writes integer zero for a free pack; the corrected full suite passed. No failed operation was retried against a live family account.
+- TypeScript, production cloud build, retained backend scaffold build, targeted formatting, `git diff --check` and all three Hosting-verifier tests passed. The main play chunk is about 213 kB minified / 67 kB gzip, with shared Three.js/model code separately split; large-chunk advisories remain.
+- Local-demo browser checks configured Halloween at 20 coins, purchased it from a 40-coin synthetic balance, equipped witch and ghost costumes, reloaded, and confirmed ownership and the 20-coin remainder persisted without a family reward request. Previewing unopened packs did not purchase them. All four location and activity controls rendered; bubble popping and camera turning/reset have ordinary button alternatives.
+- At a 390 × 844 viewport, the clearing and wardrobe both had page width equal to client width (375 CSS pixels with a scrollbar). Verified the larger character, saved costume, bubble control and Still-mode notice/camera controls. A clean final browser flow produced no application errors. React Three Fiber currently emits an upstream Three.js Clock deprecation warning; the removed soft-shadow default was replaced with PCFShadowMap.
+- Review images: `artifacts/pip-play-woodland-desktop.jpg`, `artifacts/pip-play-mobile.jpg`, `artifacts/halloween-wardrobe-mobile.jpg`. They show synthetic local-demo state only.
+- Real cloud-browser purchase flow, physical-device GPU/battery profiling, OS-level reduced-motion emulation, forced WebGL loss and Firebase publication have not been performed for this update. The character is refined procedural geometry, not a newly imported skinned artist-authored asset. Release requires explicit approval, a rules-first deployment, then the Hosting workflow.
+
 ## GitHub Hosting automation — October 29, 2026
 
 - Read GitHub repository metadata and confirmed `pwd5018/math-quest` is private, its default branch is `codex/math-quest-firebase`, and its numeric repository/owner IDs match the proposed workload-identity trust condition.

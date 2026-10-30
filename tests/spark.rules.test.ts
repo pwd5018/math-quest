@@ -72,6 +72,161 @@ afterAll(async () => {
   await env?.cleanup();
 });
 describe("Spark-only authorization and atomic economy", () => {
+  it("persists the new creature voices without changing the wallet or accepting arbitrary styles", async () => {
+    const { child } = await family();
+    const balance = child.wallet.balance;
+    for (const voice of ["mellow", "robot", "chime"] as const) {
+      await child.preferences({
+        ...child.state,
+        appearance: { ...child.state.appearance, voice },
+      });
+      expect(child.state.appearance.voice).toBe(voice);
+      expect(child.wallet.balance).toBe(balance);
+    }
+    await assertFails(
+      updateDoc(doc(child.db, root), { "appearance.voice": "unknown" }),
+    );
+  });
+  it("keeps normal practice available when pack collections are not deployed yet", async () => {
+    const current = readFileSync("firestore.spark.rules", "utf8");
+    const rollout = current
+      .replace(
+        /match \/packCatalog\/\{id\} \{\s*allow read: if member\(owner,child\);/,
+        "match /packCatalog/{id} { allow read: if false;",
+      )
+      .replace(
+        /match \/cosmetics\/\{id\} \{\s*allow read: if member\(owner,child\);/,
+        "match /cosmetics/{id} { allow read: if false;",
+      );
+    expect(rollout).not.toBe(current);
+    const staged = await initializeTestEnvironment({
+      projectId: "demo-math-quest-pack-rollout",
+      firestore: { host: "127.0.0.1", port: 8080, rules: rollout },
+    });
+    try {
+      const db = staged
+        .authenticatedContext("parent-a", parentClaims())
+        .firestore();
+      const p = new CloudRepository(db, "parent-a");
+      await p.initialize("Explorer", false);
+      await p.reload();
+      expect(p.state.packSupport).toBe(false);
+      expect(p.state.ownedPacks).toEqual([]);
+      await p.start("multiplication");
+      await p.answer(String(p.active!.question.answer));
+      expect(p.wallet.balance).toBe(3);
+    } finally {
+      await staged.cleanup();
+    }
+  });
+  it("buys a costume pack atomically, persists ownership, and never charges twice", async () => {
+    const { p, child } = await family();
+    await p.savePackSetting("halloween", { price: 20, enabled: true });
+    await p.adjust(30, "Costume test award");
+    await child.buyPack("halloween", 20);
+    expect(child.wallet.balance).toBe(10);
+    expect(child.state.ownedPacks).toEqual(["halloween"]);
+    expect(child.state.requests).toEqual([]);
+    await child.buyPack("halloween", 20);
+    expect(child.wallet.balance).toBe(10);
+    await child.preferences({
+      ...child.state,
+      appearance: { ...child.state.appearance, outfit: "witch" },
+    });
+    await p.savePackSetting("halloween", { price: 100, enabled: false });
+    await child.preferences({
+      ...child.state,
+      appearance: { ...child.state.appearance, outfit: "ghost" },
+    });
+    const fresh = new CloudRepository(child.db, "parent-a");
+    await fresh.reload();
+    expect(fresh.state.ownedPacks).toEqual(["halloween"]);
+    expect(fresh.state.appearance.outfit).toBe("ghost");
+    expect(fresh.wallet.balance).toBe(10);
+    await assertFails(
+      updateDoc(child.ref("cosmetics", "halloween"), { price: 0 }),
+    );
+  });
+  it("rejects child catalog edits, unowned outfits, forged ownership and coordinated underpayment", async () => {
+    const { p, child } = await family();
+    await p.savePackSetting("halloween", { price: 20, enabled: true });
+    await p.adjust(30, "Costume test award");
+    await expect(
+      child.savePackSetting("halloween", { price: 0, enabled: true }),
+    ).rejects.toThrow();
+    await expect(
+      child.preferences({
+        ...child.state,
+        appearance: { ...child.state.appearance, outfit: "witch" },
+      }),
+    ).rejects.toThrow();
+    await assertFails(
+      setDoc(child.ref("cosmetics", "halloween"), {
+        packId: "halloween",
+        price: 20,
+        at: serverTimestamp(),
+      }),
+    );
+    const batch = writeBatch(child.db);
+    batch.set(child.ref("cosmetics", "halloween"), {
+      packId: "halloween",
+      price: 1,
+      at: serverTimestamp(),
+    });
+    batch.set(child.ref("ledger", "pack-halloween"), {
+      kind: "pack",
+      amount: -1,
+      reason: "Costume pack: Halloween stories",
+      ref: "halloween",
+      at: serverTimestamp(),
+    });
+    batch.update(child.ref("wallet", "current"), {
+      balance: 29,
+      lastOp: "pack-halloween",
+      updatedAt: serverTimestamp(),
+    });
+    await assertFails(batch.commit());
+    await child.reload();
+    expect(child.wallet.balance).toBe(30);
+    expect(child.state.ownedPacks).toEqual([]);
+  });
+  it("prevents overspending across simultaneous pack purchases", async () => {
+    const { p, child } = await family();
+    await p.savePackSetting("halloween", { price: 20, enabled: true });
+    await p.savePackSetting("ocean", { price: 20, enabled: true });
+    await p.adjust(30, "Costume test award");
+    const other = new CloudRepository(child.db, "parent-a");
+    await other.reload();
+    const results = await Promise.allSettled([
+      child.buyPack("halloween", 20),
+      other.buyPack("ocean", 20),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    await child.reload();
+    expect(child.wallet.balance).toBe(10);
+    expect(child.state.ownedPacks).toHaveLength(1);
+  });
+  it("checks disabled packs, current prices, funds and explicit free packs", async () => {
+    const { p, child } = await family();
+    await p.savePackSetting("halloween", { price: 20, enabled: false });
+    await expect(child.buyPack("halloween", 20)).rejects.toThrow(/not opened/);
+    await p.savePackSetting("halloween", { price: 20, enabled: true });
+    await expect(child.buyPack("halloween", 20)).rejects.toThrow(/more coins/);
+    await p.adjust(30, "Costume test award");
+    await p.savePackSetting("halloween", { price: 25, enabled: true });
+    await expect(child.buyPack("halloween", 20)).rejects.toThrow(
+      /price changed/,
+    );
+    await p.savePackSetting("cozy", { price: 0, enabled: true });
+    await child.buyPack("cozy", 0);
+    expect(child.wallet.balance).toBe(30);
+    expect(child.state.ownedPacks).toEqual(["cozy"]);
+    const outsider = env
+      .authenticatedContext("unbound", childClaims)
+      .firestore();
+    await assertFails(getDoc(doc(outsider, `${root}/cosmetics/cozy`)));
+    await assertFails(getDoc(doc(outsider, `${root}/packCatalog/cozy`)));
+  });
   it("rejects a coordinated forged award even when every client transaction document agrees", async () => {
     const { child } = await family();
     await child.start("multiplication");

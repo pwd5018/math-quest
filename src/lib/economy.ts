@@ -48,6 +48,9 @@ export type LearningEvent = {
   at: string;
 };
 export type State = {
+  ownedPacks?: string[];
+  packSupport?: boolean;
+  packSettings?: Record<string, import("./packs").PackSetting>;
   appearance: Appearance;
   version: 1;
   nickname: string;

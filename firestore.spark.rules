@@ -24,10 +24,10 @@ service cloud.firestore {
   function skill(s) { return s in ['addition','subtraction','multiplication','division']; }
   function appearance(a) {
    return a.keys().hasOnly(['outfit','accent','hat','glasses','move','sky','motion','voice'])
-    && a.keys().size()==8 && a.outfit in ['explorer','wizard','astronaut','raincoat']
+    && a.keys().size()==8 && a.outfit in ['explorer','wizard','astronaut','raincoat','pumpkin','witch','ghost','vampire','knight','dragon','fairy','royal','robot','alien','cadet','comet','pirate','sailor','diver','merfolk','chef','pajamas','artist','gardener','snowman','elf','reindeer','penguin']
     && a.accent in ['mint','violet','sunshine','berry'] && a.hat in ['none','cap','crown','flower']
     && a.glasses is bool && a.move in ['hop','twirl','stars','dance','wave']
-    && a.sky in ['day','sunset','starlight'] && a.motion in ['playful','calm','still'] && a.voice in ['off','soft','chirpy'];
+    && a.sky in ['day','sunset','starlight'] && a.motion in ['playful','calm','still'] && a.voice in ['off','soft','chirpy','mellow','robot','chime'];
   }
   function plan(p) {
    return p.keys().hasOnly(['revision','focusSkill','enabledSkills','maxFactor','mode']) && p.keys().size()==5
@@ -111,7 +111,7 @@ service cloud.firestore {
    && whole(d.cost,1,1000000) && d.approved is bool && d.archived is bool && d.available is bool && whole(d.limit,0,1000000) && whole(d.used,0,1000000); }
   function ledger(o,c,l,id) {
    let w=getAfter(dp(o,c,'wallet','current')).data;
-   return l.keys().hasOnly(['kind','amount','reason','ref','at']) && l.keys().size()==5 && l.kind in ['practice','request','refund','adjust']
+   return l.keys().hasOnly(['kind','amount','reason','ref','at']) && l.keys().size()==5 && l.kind in ['practice','request','refund','adjust','pack']
     && whole(l.amount,-1000000,1000000) && short(l.reason,200) && short(l.ref,100) && l.at==request.time && w.lastOp==id;
   }
   function walletPractice(o,c,d,w,l) {
@@ -146,12 +146,24 @@ service cloud.firestore {
   match /familiesV2/{owner}/children/{child} {
    allow get: if member(owner,child);
    allow list: if parent(owner);
-   allow create: if parent(owner) && child=='explorer' && profile(request.resource.data) && request.resource.data.createdAt==request.time;
-   allow update: if member(owner,child) && profile(request.resource.data)
+   allow create: if parent(owner) && child=='explorer' && profile(request.resource.data) && request.resource.data.createdAt==request.time && outfitPack(request.resource.data.appearance.outfit)=='';
+   allow update: if member(owner,child) && profile(request.resource.data) && canWear(owner,child,request.resource.data.appearance.outfit)
     && request.resource.data.createdAt==resource.data.createdAt
     && ((parent(owner) && request.resource.data.settings.curriculum.revision==resource.data.settings.curriculum.revision+
      (request.resource.data.settings.curriculum.diff(resource.data.settings.curriculum).affectedKeys().hasAny(['focusSkill','enabledSkills','maxFactor','mode'])?1:0))
      || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['appearance','goalId']));
+   match /packCatalog/{id} {
+    allow read: if member(owner,child);
+    allow create,update: if parent(owner) && packId(id) && request.resource.data.keys().hasOnly(['id','price','enabled','updatedAt']) && request.resource.data.keys().size()==4
+     && request.resource.data.id==id && whole(request.resource.data.price,0,1000000) && request.resource.data.enabled is bool && request.resource.data.updatedAt==request.time;
+   }
+   match /cosmetics/{id} {
+    allow read: if member(owner,child);
+    allow create: if member(owner,child) && packId(id) && request.resource.data.keys().hasOnly(['packId','price','at']) && request.resource.data.keys().size()==3
+     && request.resource.data.packId==id && request.resource.data.at==request.time && request.resource.data.price==get(dp(owner,child,'packCatalog',id)).data.price
+     && getAfter(dp(owner,child,'wallet','current')).data.lastOp=='pack-'+id
+     && getAfter(dp(owner,child,'ledger','pack-'+id)).data.kind=='pack';
+   }
    match /runtime/{id} {
     allow read: if member(owner,child);
     allow create: if parent(owner) && id=='current' && request.resource.data=={'sessionId':'','updatedAt':request.time};
@@ -244,7 +256,20 @@ service cloud.firestore {
    return !exists(dp(o,c,'ledger',d.lastOp)) && ledger(o,c,l,d.lastOp)
     && ((l.kind=='practice' && walletPractice(o,c,d,w,l))
      || (d.total==w.total && d.day==w.day && d.earned==w.earned && d.counts==w.counts
-      && ((l.kind in ['request','refund'] && walletRequest(o,c,d,w,l)) || (l.kind=='adjust' && parent(o) && l.amount!=0 && d.balance==w.balance+l.amount))));
+      && ((l.kind in ['request','refund'] && walletRequest(o,c,d,w,l)) || (l.kind=='adjust' && parent(o) && l.amount!=0 && d.balance==w.balance+l.amount) || (l.kind=='pack' && walletPack(o,c,d,w,l)))));
+  }
+  function packId(id) { return id in ['halloween','enchanted','cosmic','ocean','cozy','winter']; }
+  function packName(id) { return {'halloween':'Halloween stories','enchanted':'Enchanted woodland','cosmic':'Cosmic explorers','ocean':'Ocean adventures','cozy':'Cozy little days','winter':'Winter wonder'}[id]; }
+  function outfitPack(outfit) {
+   return outfit in ['pumpkin','witch','ghost','vampire']?'halloween':outfit in ['knight','dragon','fairy','royal']?'enchanted':outfit in ['robot','alien','cadet','comet']?'cosmic':outfit in ['pirate','sailor','diver','merfolk']?'ocean':outfit in ['chef','pajamas','artist','gardener']?'cozy':outfit in ['snowman','elf','reindeer','penguin']?'winter':'';
+  }
+  function canWear(o,c,outfit) { let id=outfitPack(outfit);return id=='' || exists(dp(o,c,'cosmetics',id)); }
+  function walletPack(o,c,d,w,l) {
+   let catalog=get(dp(o,c,'packCatalog',l.ref)).data;
+   let owned=getAfter(dp(o,c,'cosmetics',l.ref)).data;
+   return packId(l.ref) && d.lastOp=='pack-'+l.ref && !exists(dp(o,c,'cosmetics',l.ref))
+    && catalog.enabled && whole(catalog.price,0,1000000) && owned.packId==l.ref && owned.price==catalog.price && owned.at==request.time
+    && l.amount== -catalog.price && l.reason=='Costume pack: '+packName(l.ref) && d.balance==w.balance-catalog.price;
   }
   function requestCreate(o,c,id,d) {
    let r=get(dp(o,c,'rewards',d.rewardId)).data;

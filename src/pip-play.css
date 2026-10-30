@@ -1,0 +1,403 @@
+.play-place-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-bottom: 20px;
+}
+.play-place-tabs [aria-pressed="true"] {
+  background: #dce9d5;
+  border-color: #6d9277;
+  color: #345b45;
+}
+.pip-play-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 255px;
+  gap: 22px;
+  align-items: start;
+}
+.pip-clearing {
+  position: relative;
+  height: 560px;
+  background: #dcebe1;
+  border: 1px solid #d3dfca;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px #47674912;
+}
+.pip-clearing > div:has(> canvas) {
+  touch-action: none;
+}
+.clearing-caption {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2;
+  pointer-events: none;
+}
+.clearing-caption span {
+  background: #fffaf0e6;
+  padding: 10px 15px;
+  border-radius: 24px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #47634d;
+}
+.clearing-caption button {
+  pointer-events: auto;
+  background: #fffaf0ed;
+  font-size: 12px;
+}
+.clearing-camera-buttons {
+  display: flex;
+  gap: 5px;
+  pointer-events: auto;
+}
+.clearing-camera-buttons button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.clearing-help {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 13px 18px;
+  background: #fffaf0e6;
+  z-index: 2;
+  font-size: 12px;
+  color: #4d6653;
+  pointer-events: none;
+  line-height: 1.5;
+}
+.pip-play-actions {
+  display: grid;
+  gap: 10px;
+}
+.play-voice {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: #466145;
+}
+.play-voice select {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 10px;
+  background: #fffdf5;
+  border: 1px solid #cbd8bf;
+  color: #345b45;
+}
+.pip-touch-options {
+  padding: 12px;
+  border: 1px solid #d3dfca;
+  border-radius: 12px;
+  background: #fffdf5;
+  font-size: 12px;
+}
+.pip-touch-options summary {
+  cursor: pointer;
+  min-height: 30px;
+}
+.pip-touch-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+.pip-touch-buttons button {
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #edf3e5;
+  border: 1px solid #cbd8bf;
+  color: #345b45;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pip-activity {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 5px 9px;
+  text-align: left;
+  padding: 17px;
+  border: 1px solid #d3dfca;
+  border-radius: 17px;
+  background: #fffdf5;
+  color: #3b5945;
+  cursor: pointer;
+  min-height: 86px;
+}
+.pip-activity > span {
+  grid-row: 1/3;
+  font-size: 30px;
+  align-self: center;
+  color: #9c8b60;
+}
+.pip-activity strong {
+  font-size: 14px;
+}
+.pip-activity small {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #687b60;
+}
+.pip-activity:hover,
+.pip-activity.selected {
+  background: #edf3e5;
+  border-color: #8eaf8e;
+}
+.pip-play-feedback {
+  margin-top: 18px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: #eef2e3;
+  color: #466145;
+  line-height: 1.6;
+  font-size: 14px;
+}
+.play-fallback {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 35px;
+  color: #47634d;
+}
+.play-fallback .companion {
+  margin: auto;
+}
+.play-loading {
+  padding: 40px;
+  color: #47634d;
+}
+.costume-collection {
+  margin-top: 36px;
+}
+.costume-collection .section-heading p {
+  line-height: 1.6;
+  color: #6d7d63;
+  font-size: 13px;
+  max-width: 540px;
+}
+.costume-pack-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.costume-pack {
+  border: 1px solid #dce3cf;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fffdf5;
+  display: flex;
+  flex-direction: column;
+}
+.costume-pack.owned {
+  border-color: #8eaf8e;
+}
+.pack-preview {
+  position: relative;
+  height: 190px;
+  display: grid;
+  place-items: center;
+}
+.pack-preview > .pip-3d {
+  width: 180px;
+  height: 180px;
+}
+.pack-count {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 10px;
+  padding: 5px 9px;
+  background: #fffaf0c9;
+  border-radius: 12px;
+  color: #52644f;
+}
+.pack-body {
+  padding: 19px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+.pack-body h3 {
+  font-size: 18px;
+  color: #385b47;
+}
+.pack-body p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #6d7d63;
+}
+.pack-body .eyebrow {
+  font-size: 9px;
+}
+.pack-costumes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: auto;
+}
+.pack-costumes button {
+  min-height: 44px;
+  font: inherit;
+  font-size: 11px;
+  padding: 7px 10px;
+  border: 1px solid #d7dfcc;
+  border-radius: 12px;
+  background: #f7f7ed;
+  color: #4b654b;
+  cursor: pointer;
+}
+.pack-costumes [aria-pressed="true"] {
+  background: #e1ecd8;
+  border-color: #86a77f;
+}
+.pack-body > .primary {
+  margin-top: 7px;
+}
+.pack-confirm {
+  display: grid;
+  gap: 9px;
+  background: #f3f0dd;
+  padding: 13px;
+  border-radius: 12px;
+}
+.pack-confirm strong {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #596747;
+}
+.pack-message {
+  padding: 15px;
+  background: #e5efdc;
+  border-radius: 12px;
+  margin: 15px 0;
+}
+.parent-pack-list {
+  display: grid;
+  gap: 17px;
+  margin-top: 24px;
+}
+.parent-pack-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px 130px 110px;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 0;
+  border-top: 1px solid #dce3cf;
+}
+.parent-pack-row p {
+  font-size: 12px;
+  line-height: 1.7;
+  margin-top: 6px;
+}
+.parent-pack-row h3 {
+  font-size: 17px;
+}
+.parent-pack-row label {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #52664e;
+}
+.parent-pack-row input[type="number"] {
+  width: 100%;
+  margin-top: 7px;
+  padding: 10px;
+  border: 1px solid #cbd7bf;
+  border-radius: 9px;
+  min-height: 44px;
+}
+.pack-enable {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pack-enable input {
+  width: 20px;
+  height: 20px;
+}
+@media (max-width: 1100px) {
+  .pip-play-layout {
+    grid-template-columns: 1fr;
+  }
+  .pip-play-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pip-play-actions > .eyebrow,
+  .pip-play-actions > .play-voice,
+  .pip-play-actions > .pip-touch-options,
+  .pip-play-actions > .pip-touch-buttons,
+  .pip-play-actions > .secondary {
+    grid-column: 1/-1;
+  }
+  .costume-pack-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .parent-pack-row {
+    grid-template-columns: minmax(0, 1fr) 150px;
+  }
+  .parent-pack-row > .primary {
+    justify-self: start;
+  }
+}
+@media (max-width: 580px) {
+  .pip-clearing {
+    height: 440px;
+    border-radius: 18px;
+  }
+  .clearing-caption {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+  }
+  .clearing-caption span {
+    font-size: 10px;
+    padding: 8px 10px;
+  }
+  .clearing-help {
+    font-size: 10px;
+  }
+  .pip-play-actions {
+    gap: 8px;
+  }
+  .pip-activity {
+    grid-template-columns: 1fr;
+    padding: 13px;
+  }
+  .pip-activity > span {
+    grid-row: auto;
+    font-size: 24px;
+  }
+  .pip-activity strong {
+    font-size: 12px;
+  }
+  .pip-activity small {
+    font-size: 11px;
+  }
+  .costume-pack-grid {
+    grid-template-columns: 1fr;
+  }
+  .parent-pack-row {
+    grid-template-columns: 1fr;
+  }
+  .play-place-tabs button {
+    font-size: 11px;
+    padding: 10px;
+  }
+  .costume-collection > .section-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .pip-clearing + .pip-play-actions .eyebrow {
+    font-size: 10px;
+  }
+}

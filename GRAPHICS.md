@@ -1,5 +1,27 @@
 # Graphics and animation
 
+## Responsive touch, creature voices and dioramas — October 30, 2026
+
+The play actor picks articulated tummy, eye, nose, ear, head, paw and tail regions. Each has a single 0.48–1.05 second reaction instead of the former repeating six-second wave. Successive touches interrupt, with three bounded variants avoiding immediate repeats. Pupils follow the pointer; eyebrows, individual eyes, ears and tail articulate. Buttons expose the same interactions. Still/reduced motion retains static expressions; Calm permits deliberate short actions without ambient wandering.
+
+Fetch is aimed by tapping open ground or choosing left/near/right. A shared continuous trajectory drives the ball, pickup and return in about 3.1 seconds. It is scripted play, not obstacle-aware navigation or general physics. Dancing lasts 2.1 seconds. Bubble pops have their own sound; touching Pip interrupts an activity.
+
+Five saved creature voice styles (soft fox, chirpy, mellow, robot and woodland sprite) synthesize event-specific hello/giggle/sniff/peek/purr/chirp/high-five/swish/pop/dance sounds locally. No speech service, microphone or remote audio assets are involved. Playback starts through explicit interaction; mute and unmount cancel pending/active audio, and a 180 ms cooldown prevents overlapping sounds. `npm.cmd run voice:preview` exports `artifacts/pip-voices-preview.wav`. Human listening acceptance remains open.
+
+Woodland now has a hollow-tree home, painted bark, lanterns, flowers, instanced grass, stream and plank bridge. Other locations have separate major scenery: giant mushrooms/portal/fireflies, a broad-leaf rain shelter/puddles/rain, and a moon dome/craters/Earth. A locally generated environment map, physical material sheen/clearcoat, ground texture and directional shadows improve depth without external image/HDR requests. The rectangular contact-shadow artifact was removed. This remains procedural cartoon art; device frame rates have not been measured.
+
+The owner approved production publication on October 30, 2026. The tested pack and saved-voice rules were deployed before the app release-branch push. Physical touch/audio/GPU acceptance, hold/stroke gestures, mood memory, obstacle-aware fetch, hide-and-seek and location mini-games remain future work.
+
+## React Three Fiber play area and costumes — October 29, 2026
+
+`PipPlayground.tsx` provides a separate, directly rendered React Three Fiber 9 / Drei scene for React 19. The compact avatars retain the shared Three.js renderer; the large clearing gets its own camera and adaptive 1–1.5 device-pixel ratio. Directional lighting, contact shadows, trees, flowers, a cottage, mushrooms, puddles/umbrella and a moon rocket establish four distinct locations. Geometry and materials remain locally bundled; there are no HDR/environment-CDN downloads or external image/model requests.
+
+Pip’s original procedural cartoon model now has a higher-resolution shaped head and articulated feet, plus 24 costume variants with modeled hats, capes, wings, antennae, diving gear, aprons and seasonal details. This is a refined procedural character, not an imported artist-authored/skinned GLB. The model is shared across the play area, wardrobe previews, small companions and answer/end celebrations.
+
+Session-seeded idle behavior varies watching, sniffing, stretching, bounded wandering and sitting without immediate repeats. Fetch has a bounded throw/retrieve/return path; petting changes the head/eyes/tail; dancing articulates the character; bubbles can be popped through direct scene picking or a keyboard-accessible button. This uses explicit animation and scene picking, not a general physics engine. Bubbles remain available without a countdown. Playtime has no economy/progression writes.
+
+The play scene uses demand rendering in Still/reduced-motion mode and stops its frame loop offscreen or in hidden documents. The small-companion renderer remains separately bounded. Parent-set prices and ownership control access to costumes, never rendering quality or quiet-mode availability. Browser layout and emulator evidence are recorded in `VALIDATION.md`; real device GPU/battery profiling remains open.
+
 Math Quest combines an SVG/CSS storybook world with an original real-time 3D Pip rendered through Three.js. React, the math interface and locally synthesized Web Audio are retained. All model geometry, clothing and accessories are constructed locally; there are no remote model/texture downloads, runtime image services or tracking.
 
 ## Real-time 3D Pip — October 29, 2026

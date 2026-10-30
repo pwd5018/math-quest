@@ -18,6 +18,7 @@ import {
   accentColors,
   hatNames,
   moveNames,
+  voiceNames,
   type Appearance,
 } from "../lib/appearance";
 
@@ -118,7 +119,7 @@ export default function PipStudio({
               </div>
             </div>
             <div className="outfit-grid">
-              {(Object.keys(outfitNames) as Appearance["outfit"][]).map(
+              {(["explorer", "wizard", "astronaut", "raincoat"] as const).map(
                 (outfit) => (
                   <button
                     type="button"
@@ -249,11 +250,14 @@ export default function PipStudio({
               <Volume2 size={20} />
               <div>
                 <h2>A teeny-tiny voice</h2>
-                <p>A little “wee-yip!” when you click your buddy.</p>
+                <p>
+                  Giggles, sniffs and little chirps that match what Pip is
+                  doing.
+                </p>
               </div>
             </div>
             <label>
-              Pip’s squeak
+              Pip’s voice
               <select
                 value={look.voice}
                 onChange={(e) => {
@@ -261,9 +265,11 @@ export default function PipStudio({
                   setVoiceMessage("");
                 }}
               >
-                <option value="soft">Soft little squeak</option>
-                <option value="chirpy">Extra chirpy</option>
-                <option value="off">Quiet Pip — sound off</option>
+                {Object.entries(voiceNames).map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
               </select>
               <small>
                 Sound plays only when you tap Pip or try the voice. The speaker
@@ -353,8 +359,9 @@ export default function PipStudio({
           <div className="studio-kind-note">
             <Sparkles size={18} />
             <p>
-              Every look and move is free. Dressing up never spends your reward
-              coins or changes your learning plan.
+              Everyday outfits, basic accessories and moves are free. Special
+              costume packs below use your grown-up’s coin prices. Dressing up
+              never changes your learning plan.
             </p>
           </div>
         </div>

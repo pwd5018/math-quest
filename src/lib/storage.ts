@@ -6,6 +6,8 @@ export const STORAGE_KEY = "math-quest-demo-v1";
 export function initialState(): State {
   return {
     version: 1,
+    ownedPacks: [],
+    packSettings: {},
     appearance: defaultAppearance(),
     nickname: "Explorer",
     attempts: [],

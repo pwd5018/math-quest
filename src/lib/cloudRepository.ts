@@ -9,6 +9,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
   startAfter,
   Timestamp,
   where,
@@ -17,6 +18,7 @@ import {
   type Firestore,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
+import { packs, validatePackSetting, type PackSetting } from "./packs";
 import {
   blankCloudState,
   CHILD_ID,
@@ -128,7 +130,13 @@ export class CloudRepository {
       onSnapshot(this.ref("runtime", "current"), () => void refresh(), onError),
     ];
     // Request approvals need no wallet change. Bound each live collection query.
-    for (const kind of ["requests", "rewards", "sessions"])
+    for (const kind of [
+      "requests",
+      "rewards",
+      "sessions",
+      "packCatalog",
+      "cosmetics",
+    ])
       unsubs.push(
         onSnapshot(
           query(
@@ -137,7 +145,14 @@ export class CloudRepository {
             limit(100),
           ),
           () => void refresh(),
-          onError,
+          (error) => {
+            if (
+              ["packCatalog", "cosmetics"].includes(kind) &&
+              error.code === "permission-denied"
+            )
+              return;
+            onError(error);
+          },
         ),
       );
     this.stop = () => {
@@ -191,20 +206,34 @@ export class CloudRepository {
     await this.hydrate();
   }
   private async hydrate() {
-    const [p, w, progress, rewards, facts, runtime] = await Promise.all([
-      getDoc(doc(this.db, this.root)),
-      getDoc(this.ref("wallet", "current")),
-      getDocs(collection(this.db, `${this.root}/progress`)),
-      getDocs(collection(this.db, `${this.root}/rewards`)),
-      getDocs(
-        query(
-          collection(this.db, `${this.root}/facts`),
-          orderBy("last", "desc"),
-          limit(1000),
+    const readPacks = async (kind: string) => {
+      try {
+        return await getDocs(
+          query(collection(this.db, `${this.root}/${kind}`), limit(6)),
+        );
+      } catch (error) {
+        if ((error as { code?: string }).code === "permission-denied")
+          return null;
+        throw error;
+      }
+    };
+    const [p, w, progress, rewards, facts, runtime, catalog, cosmetics] =
+      await Promise.all([
+        getDoc(doc(this.db, this.root)),
+        getDoc(this.ref("wallet", "current")),
+        getDocs(collection(this.db, `${this.root}/progress`)),
+        getDocs(collection(this.db, `${this.root}/rewards`)),
+        getDocs(
+          query(
+            collection(this.db, `${this.root}/facts`),
+            orderBy("last", "desc"),
+            limit(1000),
+          ),
         ),
-      ),
-      getDoc(this.ref("runtime", "current")),
-    ]);
+        getDoc(this.ref("runtime", "current")),
+        readPacks("packCatalog"),
+        readPacks("cosmetics"),
+      ]);
     if (!p.exists() || !w.exists())
       throw new Error(
         "This family profile is not ready. Ask your parent to finish setup.",
@@ -254,6 +283,14 @@ export class CloudRepository {
     this.state = {
       ...blankCloudState(),
       ...p.data(),
+      packSupport: !!catalog && !!cosmetics,
+      ownedPacks: cosmetics?.docs.map((d) => d.id) ?? [],
+      packSettings: Object.fromEntries(
+        (catalog?.docs ?? []).map((d) => [
+          d.id,
+          { price: d.data().price, enabled: d.data().enabled },
+        ]),
+      ),
       version: 1,
       attempts,
       events: (this.loaded.get("events") ?? [])
@@ -673,6 +710,55 @@ export class CloudRepository {
       const ref = this.ref("rewards", reward.id),
         old = await tx.get(ref);
       tx.set(ref, { ...clean(reward), used: old.data()?.used ?? 0 });
+    });
+    await this.reload();
+  }
+  async savePackSetting(id: string, setting: PackSetting) {
+    if (!packs.some((p) => p.id === id))
+      throw new Error("Unknown costume pack.");
+    await setDoc(this.ref("packCatalog", id), {
+      id,
+      ...validatePackSetting(setting),
+      updatedAt: serverTimestamp(),
+    });
+    await this.reload();
+  }
+  async buyPack(id: string, expectedPrice: number) {
+    const pack = packs.find((p) => p.id === id);
+    if (!pack) throw new Error("Unknown costume pack.");
+    await runTransaction(this.db, async (tx) => {
+      const [owned, catalog, w] = await Promise.all([
+        tx.get(this.ref("cosmetics", id)),
+        tx.get(this.ref("packCatalog", id)),
+        tx.get(this.ref("wallet", "current")),
+      ]);
+      if (owned.exists()) return;
+      if (!catalog.exists() || !catalog.data().enabled)
+        throw new Error("Your grown-up has not opened this pack yet.");
+      const { price } = validatePackSetting(catalog.data() as PackSetting);
+      if (price !== expectedPrice)
+        throw new Error(
+          "The pack price changed. Review the new price before buying.",
+        );
+      if (w.data()!.balance < price)
+        throw new Error("You need a few more coins for this pack.");
+      tx.set(this.ref("cosmetics", id), {
+        packId: id,
+        price,
+        at: serverTimestamp(),
+      });
+      tx.set(this.ref("ledger", `pack-${id}`), {
+        kind: "pack",
+        amount: price === 0 ? 0 : -price,
+        reason: `Costume pack: ${pack.name}`,
+        ref: id,
+        at: serverTimestamp(),
+      });
+      tx.update(this.ref("wallet", "current"), {
+        balance: w.data()!.balance - price,
+        lastOp: `pack-${id}`,
+        updatedAt: serverTimestamp(),
+      });
     });
     await this.reload();
   }

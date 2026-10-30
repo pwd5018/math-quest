@@ -24,6 +24,8 @@ import { balance } from "../lib/economy";
 import { skills, skillNames } from "../lib/math";
 import { useDialog } from "../lib/useDialog";
 import { reviseCurriculum } from "../lib/curriculum";
+import { ParentPackSettings } from "./CostumePacks";
+import { setPackSetting, type PackSetting } from "../lib/packs";
 type Props = {
   state: State;
   update: (s: State) => Promise<boolean>;
@@ -33,6 +35,7 @@ type Props = {
   resolve: typeof resolveRequest;
   cloud?: boolean;
   commands?: {
+    pack: (id: string, setting: PackSetting) => Promise<boolean>;
     reward: (reward: Reward) => Promise<boolean>;
     settings: (state: State) => Promise<boolean>;
     adjust: (amount: number, reason: string) => Promise<boolean>;
@@ -152,6 +155,7 @@ export default function Parent({
           },
           { id: "ledger", label: "Coin ledger", icon: ScrollText },
           { id: "settings", label: "Learning goals", icon: Settings2 },
+          { id: "packs", label: "Costume packs", icon: Gift },
         ].map((t) => (
           <button
             role="tab"
@@ -168,6 +172,16 @@ export default function Parent({
           </button>
         ))}
       </div>
+      {tab === "packs" && (
+        <ParentPackSettings
+          state={state}
+          onSave={async (id, setting) =>
+            commands
+              ? commands.pack(id, setting)
+              : update(setPackSetting(state, id, setting))
+          }
+        />
+      )}
       {tab === "overview" && (
         <>
           <section className="panel focus-overview">

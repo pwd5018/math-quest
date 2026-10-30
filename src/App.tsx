@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Map,
   BookOpen,
@@ -51,6 +58,9 @@ import { Companion } from "./components/Companion";
 import PipStudio from "./components/PipStudio";
 import MathTools from "./components/MathTools";
 import AdventureEnding from "./components/AdventureEnding";
+import { CostumePacks } from "./components/CostumePacks";
+import { buyPack, type PackSetting } from "./lib/packs";
+const PipPlayground = lazy(() => import("./components/PipPlayground"));
 import { changeAppearance } from "./lib/appearance";
 import { stopPipVoice } from "./lib/pipVoice";
 import type { CloudRepository } from "./lib/cloudRepository";
@@ -61,7 +71,8 @@ import {
   SkillMedal,
 } from "./components/Illustrations";
 
-type Page = "map" | "practice" | "shop" | "badges" | "parent" | "studio";
+type Page =
+  "map" | "practice" | "shop" | "badges" | "parent" | "studio" | "play";
 type Run = {
   id: string;
   skill: Skill;
@@ -481,6 +492,7 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
     { id: "shop", icon: ShoppingBag, name: "Treasure shop" },
     { id: "badges", icon: Award, name: "My achievements" },
     { id: "studio", icon: Shirt, name: "Pip’s dressing room" },
+    { id: "play", icon: Heart, name: "Play with Pip" },
   ] as const;
   if (import.meta.env.VITE_APP_MODE === "firebase" && !cloud)
     return (
@@ -1447,13 +1459,57 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
               </section>
             </>
           )}
+          {page === "play" && (
+            <Suspense
+              fallback={<p className="panel">Opening Pip’s clearing…</p>}
+            >
+              <PipPlayground
+                look={state.appearance}
+                onDress={() => navigate("studio")}
+                onVoice={(voice) =>
+                  safely(() =>
+                    changeAppearance(state, { ...state.appearance, voice }),
+                  )
+                }
+              />
+            </Suspense>
+          )}
           {page === "studio" && (
-            <PipStudio
-              look={state.appearance}
-              cloud={!!cloud}
-              onChange={(look) => safely(() => changeAppearance(state, look))}
-              onExplore={() => navigate("map")}
-            />
+            <>
+              <PipStudio
+                look={state.appearance}
+                cloud={!!cloud}
+                onChange={(look) => safely(() => changeAppearance(state, look))}
+                onExplore={() => navigate("map")}
+              />
+              <CostumePacks
+                state={state}
+                onWear={(outfit) =>
+                  safely(() =>
+                    changeAppearance(state, {
+                      ...state.appearance,
+                      outfit,
+                      hat: "none",
+                    }),
+                  )
+                }
+                onBuy={async (id, price) => {
+                  if (cloud)
+                    return (
+                      (await cloud.onChange(async () => {
+                        await cloud.repo.buyPack(id, price);
+                        return true;
+                      })) === true
+                    );
+                  try {
+                    return await update(buyPack(state, id, now(), price));
+                  } catch (error) {
+                    setToast((error as Error).message);
+                    return false;
+                  }
+                }}
+              />
+            </>
           )}
           {page === "parent" && (!cloud || cloud.parent) && (
             <Parent
@@ -1465,6 +1521,11 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
               commands={
                 cloud?.parent
                   ? {
+                      pack: async (id: string, setting: PackSetting) =>
+                        (await cloud.onChange(async () => {
+                          await cloud.repo.savePackSetting(id, setting);
+                          return true;
+                        })) === true,
                       reward: async (reward) =>
                         (await cloud.onChange(async () => {
                           await cloud.repo.saveReward(reward);

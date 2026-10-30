@@ -1,5 +1,27 @@
 # Math Quest implementation plan
 
+## Responsive Pip slice — October 30, 2026
+
+- [x] Short, interruptible body-specific reactions, articulated eyes/ears/brows, pointer gaze and bounded response variants.
+- [x] Five saved creature voice styles and reaction-specific sounds with mute and overlap protection.
+- [x] Distinct diorama scenery, woodland tree home/stream/bridge, local texture/environment lighting and shadow correction.
+- [x] Aimed fetch with button alternatives and continuous pickup/return; shorter dance.
+- [x] Unit/rules emulator checks and production build.
+- [ ] Owner visual/audio and physical touchscreen performance acceptance.
+- [ ] Hold/stroke gestures, mood context, obstacle-aware fetch and unique location mini-games.
+- [x] Owner approved production publication October 30; security rules deployed first. Hosting release must pass the GitHub workflow and file verifier.
+
+## React Three Fiber play area and costume packs — October 29, 2026
+
+- [x] Dedicated large R3F/Drei scene, refined procedural cartoon model and four modeled locations.
+- [x] Bounded random idle behavior, pet/fetch/bubble/dance activities, camera buttons and quiet/offscreen handling.
+- [x] Six four-costume collections, including Halloween pumpkin/witch/ghost/vampire.
+- [x] Parent price/availability configuration and confirmed one-time purchases without reward goals/approvals.
+- [x] Local persistence plus cloud atomic wallet/ledger/ownership transactions, strict ownership and parent-only catalog rules.
+- [x] Unit, rules-emulator and initial browser purchase/equip/reload checks.
+- [ ] Physical-device graphics/performance acceptance.
+- [ ] Explicitly publish the reviewed rules, then commit/push the application to activate the Hosting release.
+
 1. Foundation: React + TypeScript + Vite + Tailwind; deterministic question generation and validation; separate learning, economy, and persistence modules.
 2. Student vertical slice: illustrated adventure map, adaptive ten-question practice, worked hints/manipulatives, permanent stars/badges, earned coins, parent-approved treasure shop and demo redemption requests.
 3. Parent demo: independent accuracy, attempts and hints, skill evidence and practice history; reward inventory, atomic request/refund flow, reasoned coin adjustments, goals and daily earning limits.

@@ -1,5 +1,7 @@
 # Automatic Firebase Hosting publication
 
+The one-time connection was completed by the owner and the first automated publication succeeded in [run 40991771106](https://github.com/pwd5018/math-quest/actions/runs/40991771106), releasing commit `4b31b6d`. The setup recipe below is retained for reference. The subsequent React Three Fiber/costume-pack/voice release was approved on October 30, 2026. Its security rules were deployed first; the release-branch push uses the same Hosting workflow and file verification.
+
 The `Validate and publish Math Quest` workflow validates pushes and pull requests. After validation succeeds, a push to the actual release/default branch, `codex/math-quest-firebase`, builds the live Firebase app and publishes **Hosting only** to `math-quest-2d6e5`. The same branch can be run manually with **Actions → Validate and publish Math Quest → Run workflow**.
 
 Pull requests and other branches never run the publication job. Production deployments are serialized, and a commit superseded before publication is skipped. The workflow checks the hosted files against the exact build using SHA-256 and records the commit and URL in the job summary. A failed verification means the release needs investigation; it does not automatically roll back a deployment that already completed.
@@ -67,6 +69,6 @@ The project ID is fixed in the workflow. These are identifiers/public browser co
 3. Inspect the first run: validation, cloud build, authentication, Hosting publication and hosted-file verification must all succeed.
 4. Open `https://math-quest-2d6e5.web.app` and check sign-in and the 3D interface on an actual family device.
 
-The workflow fails with named missing variables until configuration is complete. No remote workflow execution, IAM setup or deployment has been performed as part of this local workflow change.
+The workflow fails with named missing variables if configuration is incomplete. The initial publication succeeded; later source edits still require an explicit commit/push to trigger a new release.
 
 References: [Google authentication action](https://github.com/google-github-actions/auth), [Firebase CLI CI authentication](https://firebase.google.com/docs/cli#cli-ci-systems), [Hosting roles and API Keys Viewer requirement](https://firebase.google.com/docs/projects/iam/roles-predefined-product#firebase-hosting-roles).

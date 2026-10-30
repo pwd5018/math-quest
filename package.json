@@ -20,6 +20,8 @@
     "hosting:verify:test": "node --test scripts/verify-hosting.test.mjs"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
     "firebase": "^12.0.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",

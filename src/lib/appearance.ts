@@ -1,10 +1,12 @@
 import type { State } from "./economy";
+import { costumeNames, ownsOutfit } from "./packs";
 
 export const outfitNames = {
   explorer: "Woodland explorer",
   wizard: "Starry wizard",
   astronaut: "Space adventurer",
   raincoat: "Puddle jumper",
+  ...costumeNames,
 } as const;
 export const accentColors = {
   mint: "#438b7b",
@@ -25,6 +27,14 @@ export const moveNames = {
   dance: "Happy dance",
   wave: "Little hello",
 } as const;
+export const voiceNames = {
+  soft: "Soft little fox",
+  chirpy: "Bright & chirpy",
+  mellow: "Warm & mellow",
+  robot: "Little robot",
+  chime: "Woodland sprite",
+  off: "Quiet Pip — sound off",
+} as const;
 export type Appearance = {
   outfit: keyof typeof outfitNames;
   accent: keyof typeof accentColors;
@@ -33,7 +43,7 @@ export type Appearance = {
   move: keyof typeof moveNames;
   sky: "day" | "sunset" | "starlight";
   motion: "playful" | "calm" | "still";
-  voice: "off" | "soft" | "chirpy";
+  voice: keyof typeof voiceNames;
 };
 export function defaultAppearance(): Appearance {
   return {
@@ -59,7 +69,7 @@ export function validateAppearance(raw: unknown): Appearance {
     typeof p.glasses !== "boolean" ||
     !["day", "sunset", "starlight"].includes(p.sky) ||
     !["playful", "calm", "still"].includes(p.motion) ||
-    !["off", "soft", "chirpy"].includes(p.voice)
+    !Object.hasOwn(voiceNames, p.voice)
   )
     throw new Error("That Pip setting is not available.");
   // Copy only cosmetic fields. A cosmetic update cannot carry learning/economy overrides.
@@ -82,5 +92,8 @@ export function restoreAppearance(raw: unknown): Appearance {
   }
 }
 export function changeAppearance(state: State, raw: unknown): State {
-  return { ...state, appearance: validateAppearance(raw) };
+  const appearance = validateAppearance(raw);
+  if (!ownsOutfit(state, appearance.outfit))
+    throw new Error("Unlock this costume’s pack before wearing it.");
+  return { ...state, appearance };
 }
