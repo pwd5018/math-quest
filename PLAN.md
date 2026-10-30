@@ -67,3 +67,28 @@ The local parent preview is explicitly insecure DEMO functionality. It is not pa
 - [ ] Owner creates/verifies the real parent account and approves their actual child devices; physical-device and real email delivery acceptance remain human steps.
 
 This milestone supersedes the earlier Functions/Blaze integration plan. Legacy Functions code is retained as an unused reference; it is absent from the production deploy configuration. Billing must remain disabled.
+
+## Hands-on tools and personal endings — October 29, 2026
+
+- [x] Interactive equal groups/arrays, equal sharing and full-distance number-line hops with reset/undo controls.
+- [x] Preserve existing hint/retry evidence and supported-answer rules; tools do not award coins or submit answers.
+- [x] Four illustrated Pip endings and session-specific learning highlights, with focus/scroll restoration on completion.
+- [x] Unit checks and local desktop/phone browser verification.
+- [ ] Deploy the reviewed update to the existing Firebase site and verify the hosted release.
+
+## Real-time 3D Pip — October 29, 2026
+
+- [x] Original articulated Three.js mesh character, lighting, shadows and full-angle rotation.
+- [x] All existing outfits, accents, hats and glasses represented by 3D geometry/materials.
+- [x] Five special moves, answer cheers, mouse/touch turning and keyboard turning/reset.
+- [x] Shared WebGL renderer, offscreen/document pause, resource disposal, motion preferences and explicit illustrated fallback.
+- [x] Motion/geometry unit checks and local desktop/phone UI verification.
+- [ ] Physical-device GPU/battery profiling, OS reduced-motion integration and forced context-loss checks.
+- [ ] Publish and verify the reviewed Firebase update.
+
+## GitHub Hosting automation — October 29, 2026
+
+- [x] Preserve existing CI validation and add release-branch push/manual Hosting publication after validation succeeds.
+- [x] Keyless Google authentication, production configuration checks, serialized publication and superseded-commit check.
+- [x] Exact hosted-file verification with successful/stale/unavailable-response tests and one-time setup documentation.
+- [ ] Configure Google Cloud identity and GitHub production variables, push the reviewed changes and verify the first real workflow run.

@@ -1,12 +1,12 @@
 # Math Quest
 
-A little practice. A big adventure. A responsive, third-grade math adventure made with React, TypeScript, Vite and Tailwind CSS. Original SVG world art and Pip the fox are bundled locally; no ads, AI APIs, external fonts, paid content, analytics or tracking.
+A little practice. A big adventure. A responsive, third-grade math adventure made with React, TypeScript, Vite and Tailwind CSS. Original SVG world art and a real-time 3D Pip are bundled locally; no ads, AI APIs, external fonts, paid content, analytics or tracking.
 
 ## Family cloud version — Firebase Spark
 
 The cloud version uses Firebase Hosting, email/password Authentication and Firestore security rules/transactions. It needs no Cloud Functions or billing account. Parent sign-in and email verification authorize a private family profile; a parent approves a separate anonymous identity on each child browser, then signs out of parent access. Parent access locks after 15 minutes; child approvals expire after 30 days and can be revoked. No public PIN or front-end role flag grants parent access.
 
-The cloud app is configured for `math-quest-2d6e5`. See [FIREBASE.md](FIREBASE.md) for setup, security design, free-plan limits and the current deployment evidence in [VALIDATION.md](VALIDATION.md). Publication uses `npm.cmd run build:cloud` followed by an explicit Hosting/rules/Auth deployment. GitHub currently runs validation only; automatic deployment is not configured.
+The cloud app is configured for `math-quest-2d6e5`. See [FIREBASE.md](FIREBASE.md) for setup, security design, free-plan limits and the current deployment evidence in [VALIDATION.md](VALIDATION.md). The GitHub workflow supports validation followed by automatic Hosting-only publication from `codex/math-quest-firebase`, once the one-time keyless deployment identity and production variables are configured. See [GITHUB-DEPLOYMENT.md](GITHUB-DEPLOYMENT.md). This workflow update is local until committed and pushed; it has not been activated remotely. Rules/Auth deployment remains separate.
 
 ## Run locally
 
@@ -35,6 +35,8 @@ Open the URL Vite prints. Default is `http://localhost:5173`. No Firebase accoun
 
 ## A playful companion, at a comfortable pace
 
+Pip is a real-time Three.js character with dimensional geometry, lights, shadows, articulated poses and 3D outfits/accessories. Drag to turn Pip, or focus a companion button and use Left/Right; Home restores the front view. Clicking or Enter/Space plays the selected move. The same 3D character appears in the map, dressing room, profile and celebrations. One shared renderer serves the views and pauses those offscreen. If 3D is unavailable, a labeled illustrated fallback preserves play. See [GRAPHICS.md](GRAPHICS.md) for rendering and device-verification limits.
+
 Pip hops and wanders around the map, pauses his route when hovered or keyboard-focused, and performs the selected special move when clicked or activated with Enter/Space. Original SVG clouds drift, tree canopies sway, water flows, birds glide and a butterfly flutters. The chosen outfit appears in the profile, sidebar, map, practice guide and answer celebrations. A successful answer brings a short, raised-paw Pip cheer into the feedback panel; hints and retries are celebrated too. The explanation and next-question control remain available during every animation. Cosmetic clicks never award practice coins or advance mastery.
 
 The dressing room has an immediate live preview. A compact, sticky preview stays available while browsing settings on phones/tablets. Choices save in this browser alongside the existing demo; missing or invalid legacy cosmetics recover to a default appearance without resetting financial or learning data.
@@ -43,9 +45,15 @@ The dressing room has an immediate live preview. A compact, sticky preview stays
 - **Calm:** stationary scenery and Pip, no particle effects, and a small wiggle for intentional moves/cheers.
 - **Still:** no animated movement or transitions, including coin effects; outfits, static happy poses and written feedback still work.
 
-The map’s pause/resume control switches between a quiet world and playful motion without opening settings. The device’s `prefers-reduced-motion` setting always overrides animation choices. Pip has a short locally synthesized creature squeak, played only after tapping Pip or the voice-preview button. Choose Soft, Extra chirpy or Off in the dressing room; the header speaker mutes immediately and saves that choice. No microphone, speech service or audio download is used. There is no flashing effect, autoplay video, tracking or external image request. Artwork and motion are SVG/CSS; audio uses Web Audio. These are child-safe cosmetic preferences, separate from parent-only learning and economy controls.
+The map’s pause/resume control switches between a quiet world and playful motion without opening settings. The device’s `prefers-reduced-motion` setting always overrides animation choices. Pip has a short locally synthesized creature squeak, played only after tapping Pip or the voice-preview button. Choose Soft, Extra chirpy or Off in the dressing room; the header speaker mutes immediately and saves that choice. No microphone, speech service or audio download is used. There is no flashing effect, autoplay video, tracking or external image request. World artwork uses SVG/CSS, Pip uses real-time WebGL, and audio uses Web Audio. These are child-safe cosmetic preferences, separate from parent-only learning and economy controls.
 
-The graphics upgrade adds layered terrain, shoreline depth, snowy peaks, shaded trees, mushroom cottages, a lighthouse, atmospheric motes, illustrated rewards and ribbon medals. Pip has shaded fur and clothing, blinking eyes, breathing, stepping feet and subtle pointer gaze. See [GRAPHICS.md](GRAPHICS.md) for rendering choices and future visual tiers.
+The graphics upgrade adds layered terrain, shoreline depth, snowy peaks, shaded trees, mushroom cottages, a lighthouse, atmospheric motes, illustrated rewards and ribbon medals. Pip has dimensional fur-colored surfaces and clothing, blinking eyes, breathing, ear/tail motion and subtle pointer gaze. See [GRAPHICS.md](GRAPHICS.md) for rendering choices and future visual tiers.
+
+## Hands-on discoveries and adventure endings
+
+Request a hint (or try again after a wrong answer) to open interactive math tools. Multiplication supports tappable gems, equal groups and an array view; division shares gems equally one round at a time. Addition and subtraction use undoable number-line hops in ones, tens and hundreds, stopping exactly at the target distance. Reset starts the model again; changing questions clears it. The tools never enter or submit an answer. A requested hint remains recorded as support, including after a cloud reload.
+
+Every completed adventure has an illustrated, trail-specific moment with Pip and highlights from that session's saved answers: independent answers, independent review questions, perseverance after mistakes and examples of independently solved facts. These scenes are free celebrations, without additional coins or mastery awards. Finishing moves focus to the summary and returns to the top so the scene is visible. Scene backgrounds are bundled SVG, with real-time 3D Pip using the existing appearance and motion settings.
 
 ## Learning and economy
 

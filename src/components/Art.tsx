@@ -4,7 +4,26 @@ import {
   type Appearance,
 } from "../lib/appearance";
 import { useId } from "react";
+import Pip3D from "./Pip3D";
 export function Fox({
+  small = false,
+  look = defaultAppearance(),
+  cheer = false,
+}: {
+  small?: boolean;
+  look?: Appearance;
+  cheer?: boolean;
+}) {
+  return (
+    <Pip3D
+      small={small}
+      look={look}
+      action={cheer ? "cheer" : "idle"}
+      stillPreview
+    />
+  );
+}
+export function SvgFox({
   small = false,
   look = defaultAppearance(),
   cheer = false,

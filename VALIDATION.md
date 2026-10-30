@@ -1,5 +1,38 @@
 # Executed validation
 
+## GitHub Hosting automation — October 29, 2026
+
+- Read GitHub repository metadata and confirmed `pwd5018/math-quest` is private, its default branch is `codex/math-quest-firebase`, and its numeric repository/owner IDs match the proposed workload-identity trust condition.
+- Parsed the updated workflow as YAML. Exercised its production-configuration guard with a valid configuration, absent configuration, incorrect Auth domain and incorrect service-account project; all four cases behaved as expected. Inspected the release-branch/event restriction, validation dependency, Hosting-only command and job-scoped OIDC permission.
+- **Three Hosting-verifier tests passed** using controlled responses: matching nested release files, stale contents despite HTTP success, and HTTP 404. These tests did not contact live Hosting. Initial sandboxed Node test execution hit `spawn EPERM`; the process-authorized run passed.
+- The actual `npm.cmd run build:cloud` completed successfully against local public Firebase configuration. It typechecked and produced live-mode output with emulator use disabled. The known Firebase/Three.js chunk-size advisories remain. No deployment command was executed.
+- Added the exact one-time Google Cloud/GitHub setup recipe in `GITHUB-DEPLOYMENT.md`, including Hosting/API-usage/API-key-viewer roles, repository-ID/owner-ID/branch/workflow/event restrictions, production variables and generated-credential Git exclusion.
+- Remote IAM configuration, GitHub environment/variable configuration, committing/pushing this update, a real Actions run and post-publication verification remain unexecuted. This verifies local workflow preparation and the cloud build, not a working remote deployment pipeline.
+
+## Real-time 3D Pip — October 29, 2026
+
+- **72/72 unit tests passed**, nine files; TypeScript, production build, targeted formatting and `git diff --check` passed. Four new tests cover all motion modes, finite poses/full-turn completion and finite, disposable mesh geometry across all 16 outfit/hat combinations with glasses.
+- Local-demo browser checks verified original WebGL-rendered Pip in the profile, sidebar, map, dressing room, outfit thumbnails, answer cheer and adventure ending. All four outfits, crown/cap/daisy, glasses and accent changes updated the 3D views. All five special-move buttons activated their corresponding 3D actions.
+- Verified full-angle keyboard rotation into a back view. A pointer drag changed the view angle to 1.020 radians while the companion remained idle; Home restored 0.000 without activating a move. A full twirl produced an intermediate nonzero 3D angle. A complete ten-question multiplication adventure retained its independent-answer highlights and used 3D cheers and the 3D ending companion.
+- In Still mode, the main preview remained at rendered-frame count 1 across separate observations; intentional keyboard turning produced frame 2 at angle 0.350. Calm rendered its short intentional motion and settled. OS-level reduced-motion emulation was not performed; static-pose behavior is unit-tested and the media-query override is implemented.
+- At 390 × 844, page scroll width equaled client width (375 CSS pixels with the scrollbar), the full main character fit its stage, and the compact pocket preview rendered. This was a browser viewport check, not a physical touchscreen or GPU/battery test.
+- A final clean load and practice flow produced no new browser errors or warnings. The initial removed `PCFSoftShadowMap` warning was corrected to the current `PCFShadowMap` API. Hot-update hook-signature warnings during edits did not recur on a clean load.
+- Three.js is lazy-loaded into a separate renderer chunk: about 566 kB minified / 146 kB gzip. Vite reports the chunk-size advisory for that chunk and the existing Firebase chunk. Source scheduling caps animated redraws at 30 per second; no sustained device frame-rate, memory or battery claim is made.
+- Review images: `artifacts/pip-3d-studio-desktop.jpg`, `pip-3d-back-view.jpg`, `pip-3d-mobile.jpg`, `pip-3d-answer-cheer.jpg`, and `pip-3d-adventure-ending.jpg`, all in `artifacts/`. They contain synthetic local-demo data only.
+- No deployment, cloud/emulator integration run, forced context-loss test or physical-device profiling was performed. WebGL/import-failure fallback and resource cleanup are implemented; forced-failure and long-session GPU acceptance remain open. Firebase rules, learning/economy state and the earlier hands-on tools are preserved.
+
+## Hands-on tools and adventure endings — October 29, 2026
+
+- Final unit run: **68/68 tests passed**, eight files. Three new tests cover exact number-line endpoints across 600 generated addition/subtraction questions, session isolation/deduplication, supported-versus-independent review evidence, and absent detailed history.
+- TypeScript, production build, targeted Prettier checks and `git diff --check` passed. The existing Firebase chunk-size advisory remains. Initial sandboxed tests/build could not start esbuild (`spawn EPERM`); the process-authorized runs completed successfully.
+- Local-demo browser checks completed all four ten-question trails. Verified tappable multiplication gems, group filling and array switching; division sharing, undo and completion; forward/backward hops, undo and a clamped final hop; reset and fresh-question state; hint and wrong-answer support; all four trail endings; saved independent/retry highlights; and a later multiplication ending with three independently solved review questions.
+- At a 390 × 844 viewport, page scroll width equaled client width (375 CSS pixels after the browser scrollbar). A 12-column model scrolled inside its 223-pixel container (595-pixel content) without widening the page. Completion focused the summary and returned scroll position to zero. Revised SVG fitting keeps scenery inside the phone scene.
+- A clean reload after development edits produced no new browser warnings/errors. One earlier hot-update warning followed editing the application's root entry; it did not recur on reload.
+- Screenshots: `artifacts/interactive-math-tools-desktop.jpg`, `artifacts/pip-adventure-ending-desktop.jpg`, `artifacts/pip-adventure-ending-mobile.jpg`. These show synthetic local-demo practice only.
+- This update changes shared UI, without changing Firebase rules or the learning/economy schemas. No cloud/emulator integration run, physical touchscreen acceptance or deployment was performed for this update.
+
+## Initial implementation — October 26, 2026
+
 Verified locally on October 26, 2026. No Firebase deployment or live-provider operations were performed.
 
 | Check                                 | Result                                                                                                                                                                                                                                                                                                                  |

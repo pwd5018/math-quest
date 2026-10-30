@@ -14,3 +14,4 @@ functions/lib/
 *.tsbuildinfo
 artifacts/
 .codex-attachments/
+gha-creds-*.json

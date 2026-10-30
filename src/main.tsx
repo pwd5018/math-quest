@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./styles.css";
 import "./graphics.css";
+import "./practice-tools.css";
+import "./pip-3d.css";
 const CloudApp = lazy(() => import("./components/CloudApp"));
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

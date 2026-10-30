@@ -16,19 +16,22 @@
     "functions:build": "npm --prefix functions run build",
     "format": "prettier --write src functions/src tests scripts *.ts *.json *.md .github/workflows/*.yml",
     "format:check": "prettier --check src functions/src tests scripts *.ts *.json *.md .github/workflows/*.yml",
-    "build:cloud": "node scripts/build-cloud.mjs"
+    "build:cloud": "node scripts/build-cloud.mjs",
+    "hosting:verify:test": "node --test scripts/verify-hosting.test.mjs"
   },
   "dependencies": {
     "firebase": "^12.0.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
     "@tailwindcss/vite": "^4.1.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^4.5.0",
     "firebase-tools": "^15.34.1",
     "prettier": "^3.9.10",

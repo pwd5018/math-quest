@@ -83,7 +83,7 @@ export default function PipStudio({
               Pip!
             </h2>
             <p>
-              Click or tap Pip to try{" "}
+              Drag Pip to look around. Click or tap to try{" "}
               <strong>{moveNames[look.move].toLowerCase()}</strong>.
             </p>
             <span className="studio-save-note">

@@ -1,8 +1,14 @@
-name: Validate Math Quest
-on: [push, pull_request]
+name: Validate and publish Math Quest
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   local-and-rules:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,7 +22,94 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix functions
       - run: npm test
+      - run: npm run hosting:verify:test
       - run: npm run typecheck
       - run: npm run build
       - run: npm run functions:build
       - run: npm run firebase:rules:test
+
+  publish-hosting:
+    name: Publish Firebase Hosting
+    needs: local-and-rules
+    if: >-
+      github.repository == 'pwd5018/math-quest' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/codex/math-quest-firebase'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://math-quest-2d6e5.web.app
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: firebase-hosting-production
+      cancel-in-progress: false
+    env:
+      VITE_FIREBASE_PROJECT_ID: math-quest-2d6e5
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      GOOGLE_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+      GOOGLE_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GOOGLE_DEPLOY_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Check production configuration
+        run: |
+          node --input-type=module <<'NODE'
+          const required = ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_AUTH_DOMAIN',
+            'VITE_FIREBASE_APP_ID', 'GOOGLE_WORKLOAD_IDENTITY_PROVIDER',
+            'GOOGLE_DEPLOY_SERVICE_ACCOUNT'];
+          const missing = required.filter(key => !process.env[key]?.trim());
+          if (missing.length) throw new Error('Set production environment variables: ' + missing.join(', '));
+          if (process.env.VITE_FIREBASE_AUTH_DOMAIN !== 'math-quest-2d6e5.firebaseapp.com')
+            throw new Error('Unexpected Firebase auth domain.');
+          if (!process.env.GOOGLE_DEPLOY_SERVICE_ACCOUNT.endsWith('@math-quest-2d6e5.iam.gserviceaccount.com'))
+            throw new Error('Deploy identity must belong to math-quest-2d6e5.');
+          NODE
+      - run: npm ci
+      - name: Build the live Firebase app
+        run: npm run build:cloud
+      - name: Skip superseded commits
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          const response = await fetch(process.env.GITHUB_API_URL + '/repos/' +
+            process.env.GITHUB_REPOSITORY + '/git/ref/heads/codex/math-quest-firebase', {
+            headers: { Authorization: 'Bearer ' + process.env.GH_TOKEN,
+              Accept: 'application/vnd.github+json' }
+          });
+          if (!response.ok) throw new Error('Cannot verify branch head: HTTP ' + response.status);
+          const head = await response.json();
+          const current = head.object.sha === process.env.GITHUB_SHA;
+          appendFileSync(process.env.GITHUB_OUTPUT, `current=${current}\n`);
+          if (!current) appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            'Skipped publication because the release branch has a newer commit.\n');
+          NODE
+      - name: Authenticate to Google Cloud without a stored key
+        if: steps.head.outputs.current == 'true'
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: math-quest-2d6e5
+          workload_identity_provider: ${{ env.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GOOGLE_DEPLOY_SERVICE_ACCOUNT }}
+      - name: Publish Hosting only
+        if: steps.head.outputs.current == 'true'
+        run: npm exec -- firebase deploy --only hosting --project math-quest-2d6e5 --non-interactive
+      - name: Verify published files
+        if: steps.head.outputs.current == 'true'
+        run: node scripts/verify-hosting.mjs
+      - name: Record release
+        if: steps.head.outputs.current == 'true'
+        run: |
+          printf 'Published and verified commit `%s` to https://math-quest-2d6e5.web.app\n' "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"

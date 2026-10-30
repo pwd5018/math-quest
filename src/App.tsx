@@ -49,6 +49,8 @@ import { useDialog } from "./lib/useDialog";
 import { selectQuestion, type Curriculum } from "./lib/curriculum";
 import { Companion } from "./components/Companion";
 import PipStudio from "./components/PipStudio";
+import MathTools from "./components/MathTools";
+import AdventureEnding from "./components/AdventureEnding";
 import { changeAppearance } from "./lib/appearance";
 import { stopPipVoice } from "./lib/pipVoice";
 import type { CloudRepository } from "./lib/cloudRepository";
@@ -185,6 +187,13 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
       : 0,
   );
   const successRef = useRef<HTMLDivElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (run?.finished) {
+      summaryRef.current?.focus({ preventScroll: true });
+      window.scrollTo(0, 0);
+    }
+  }, [run?.finished]);
   useEffect(() => {
     if (cloud) setState(cloud.state);
   }, [cloud?.state]);
@@ -961,20 +970,19 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
                 </button>
               </section>
               {run.finished ? (
-                <section className="session-summary">
-                  <div className="celebration">
-                    <span className="celebration-medal">
-                      <SkillMedal symbol="✦" unlocked />
-                    </span>
-                    <Companion
-                      look={state.appearance}
-                      celebrate
-                      label="Play with celebrating Pip"
-                    />
-                    <span className="celebration-medal">
-                      <SkillMedal symbol="✧" unlocked />
-                    </span>
-                  </div>
+                <section
+                  className="session-summary"
+                  ref={summaryRef}
+                  tabIndex={-1}
+                  aria-label="Adventure complete"
+                >
+                  <AdventureEnding
+                    skill={run.skill}
+                    look={state.appearance}
+                    attempts={state.attempts}
+                    sessionId={run.id}
+                    independent={run.correct}
+                  />
                   <div className="eyebrow">ADVENTURE COMPLETE</div>
                   <h2>You kept going. That’s wonderful.</h2>
                   <p>
@@ -1114,7 +1122,7 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
                                   : "Let’s work it out together."}
                               </strong>
                               <p>{q.hint}</p>
-                              <Manipulative question={q} />
+                              <MathTools key={q.id} question={q} />
                               {wrongs >= 2 && (
                                 <p className="worked-example">
                                   <strong>Worked example:</strong>{" "}
@@ -1608,53 +1616,6 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
           </section>
         </div>
       )}
-    </div>
-  );
-}
-function Manipulative({
-  question: q,
-}: {
-  question: ReturnType<typeof generateQuestion>;
-}) {
-  if (q.skill === "multiplication" || q.skill === "division") {
-    const rows = q.skill === "multiplication" ? q.a : q.b;
-    const cols = q.skill === "multiplication" ? q.b : q.answer;
-    return (
-      <div
-        className="array-visual"
-        aria-label={`${rows} groups of ${cols} dots`}
-      >
-        {Array.from({ length: rows }, (_, i) => (
-          <div className="dot-group" key={i}>
-            {Array.from({ length: cols }, (_, j) => (
-              <span key={j} />
-            ))}
-          </div>
-        ))}
-      </div>
-    );
-  }
-  const step = q.skill === "addition" ? 1 : -1;
-  const b = Math.min(q.b, 10);
-  const start = q.a;
-  return (
-    <div className="number-line">
-      <span className="number-line-label">
-        {q.b > 10
-          ? "First, try a few single steps:"
-          : "Hop along the number line:"}
-      </span>
-      <div className="number-line-points">
-        {Array.from({ length: b + 1 }, (_, i) => (
-          <span key={i}>
-            <i />
-            {start + i * step}
-          </span>
-        ))}
-      </div>
-      <span>
-        {q.skill === "addition" ? "→ Count forward" : "← Count backward"}
-      </span>
     </div>
   );
 }
