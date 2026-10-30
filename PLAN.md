@@ -1,5 +1,26 @@
 # Math Quest implementation plan
 
+## Separate subject concept paths — October 30, 2026
+
+- [x] Multiplication: equal groups, repeated addition, skip-counting, rows/columns.
+- [x] Division: equal sharing, making equal-sized groups, quantity/equation interpretation, division arrays.
+- [x] Each concept has a demonstration, distinct guided model, two new checks, alternate explanation and wrap-up.
+- [x] Separate concept observations and preserved version 1 picnic notes without granting new lesson credit.
+- [x] Correct subject routing from practice, recorded help and typed-answer retention.
+- [x] Unit and production build checks; all eight lessons completed in local browser QA; mobile models, reload and narration/mute verified.
+- [ ] Owner/learner/educator and physical-device acceptance; publication remains a separate step.
+- [ ] Remaining planned multiplication/division concepts, then addition/subtraction, place value and fractions.
+
+## Learning Center first lesson — October 30, 2026
+
+- [x] Learning Center navigation and one complete equal-groups → multiplication → sharing concept journey.
+- [x] Child-controlled demonstration, tappable objects, arrays, guided feedback, two independent checks and optional narration.
+- [x] Device-only concept notes separate from wallet and practice mastery.
+- [x] Teach-me practice link records help and preserves the question/answer on return.
+- [x] Unit/build checks plus desktop/mobile lesson, persistence and practice-round-trip browser verification.
+- [ ] Learner/educator and physical-device acceptance; production review/publication.
+- [ ] More lessons: addition/subtraction, place value, fractions; cloud-synced concept history and parent lesson configuration.
+
 ## Responsive Pip slice — October 30, 2026
 
 - [x] Short, interruptible body-specific reactions, articulated eyes/ears/brows, pointer gaze and bounded response variants.

@@ -1,5 +1,38 @@
 # Executed validation
 
+## Approved Learning Center release — October 30, 2026
+
+The owner approved pushing the reviewed eight-lesson Learning Center and Kokoro Heart narration. This release includes 40 generated direction recordings, whose source models remain outside the repository. No database/rules, Auth, IAM or billing changes are needed. The existing release-branch workflow validates, publishes Hosting and verifies every published file. Earlier local-only statements below describe pre-publication review stages; final deployment success requires the workflow result.
+
+## Local Kokoro narration — October 30, 2026
+
+- Generated 40 mono 24 kHz PCM-16 WAV files locally with the owner's installed Kokoro ONNX model, `af_heart`, speed 0.9: all eight lessons' watch/guided/check-1/check-2/wrap-up directions. Model and voice weights remain outside the repository in `D:/Paul/Kokoro`; only finished audio is shipped. No speech-provider API was used.
+- **91/91 unit tests passed**, fourteen files. Every current direction has a manifest entry and valid audio header/rate/length. Tests cover spoken arithmetic normalization, content-key changes, cancellation of delayed playback errors, and a single fallback on unavailable recordings. TypeScript and cloud production build passed; large shared-chunk advisories remain.
+- Local-demo browser verified the watch and guided steps select Kokoro Heart, Read aloud/Stop reading state, header mute cancellation and disabled narration, and subsequent step playback. Browser error logs were empty. Source cleanup cancels recorded and device speech on step change, replay or unmount; global mute also cancels narration before a pending cloud preference write completes. Real cloud-browser integration remains unexecuted.
+- Content-addressed clips prevent stale directions after text edits; regenerate edited lines with the documented local script. Missing/failed clips fall back to a local English device voice. Runtime serves normal same-origin audio files; offline playback still requires prior download/cache.
+- Review proof: `artifacts/kokoro-reading-directions.png`. The owner approved the Heart test voice before integration; not every generated line has received human pronunciation/listening acceptance. Physical speakers/touchscreen acceptance remains open. No commit, push, deployment or Firebase configuration change.
+
+## Eight separate concept lessons — October 30, 2026
+
+- **87/87 unit tests passed**, thirteen files. New tests verify eight unique lessons across two subjects, valid check examples, correct passing models, sharing versus grouping answers, unequal groups/addends, incomplete jumps, wrong array arrangement, mismatched equation roles, and isolated/bounded concept observations.
+- TypeScript and cloud production build passed. The lazy lesson bundle is approximately 29 kB minified / 9.3 kB gzip plus 13.7 kB CSS. Existing shared Three.js/Firebase chunk advisories remain.
+- Completed all eight lessons through the local DEMO UI, including both check questions per lesson. Repeated addition deliberately used a wrong answer and alternate explanation; its note showed supported practice while the other seven showed independent checks. Correct totals in wrong structures were rejected: 2 × 6 instead of a requested 3 × 4 array, and true 12 ÷ 4 = 3 rejected for a story sharing among three blankets. Wrong skip-count landing feedback and undo worked.
+- All eight concept notes survived reload. Earlier version 1 picnic notes remained available separately and were not converted into new-concept completion. The synthetic wallet remained 20 coins and practice stars remained 11.
+- Division practice opened Division learning; Multiplication practice opened Multiplication learning. A typed division answer of 7 was retained on return and the ordinary hint state was set. No practice answer was submitted in these checks. This is local-demo integration evidence, not production Firebase-browser evidence.
+- At 390 × 844, catalogue, division rows and number line each had root client width = scroll width = 375 CSS pixels. Division berry buttons measured 44 pixels wide. Long rows/number lines scroll within the model. Local English narration entered its active state; header mute cancelled and disabled it. Browser error logs were empty. Temporary viewport reset and tab/server closed after review.
+- Images: `artifacts/multiplication-concepts.png`, `artifacts/division-concepts.png`, `artifacts/division-array-mobile.png`, `artifacts/skip-counting-mobile.png`. The earlier combined lesson source was preserved in ignored review artifacts before replacement.
+- No Firebase rules, schema, auth or backend changes. No commit, push or deployment. Real cloud-browser lesson integration, physical touchscreen/audio performance and educator/learner acceptance remain open. Later planned concepts are not yet implemented.
+
+## Learning Center — October 30, 2026
+
+- **83/83 unit tests passed**, twelve files. Concept checks reject a correct total in unequal groups, identify a specific group adjustment, preserve independent observations across supported replays and restore bounded device notes without accepting economy/mastery fields.
+- TypeScript and the production cloud build passed. The lazily loaded lesson is about 15 kB minified / 5.5 kB gzip plus 8.5 kB CSS. Existing large Three.js/Firebase chunk advisories remain.
+- Completed the local-demo lesson: three group reveals, 3/4/5 berries rejected despite totaling twelve, correction to 4/4/4 accepted, a wrong multiplication answer followed by array help and retry, the second multiplication check, and finite-basket equal sharing. Notes correctly showed multiplication with help and sharing independently; lesson completion did not change the 20-coin balance or practice stars. Notes survived a page reload.
+- Practice round trip preserved question `5 × 11`, its typed `55`, the same run position and a recorded hint. Returning exposed the ordinary supported-practice explanation. No practice answer was submitted or reward earned in this round-trip check.
+- Read-aloud entered its active state using a local English browser voice. Header mute cancelled narration and disabled its button. API acceptance is not proof of subjective speaker quality. Written instructions and diagrams remain available.
+- At 390 × 844, root scroll width and client width were both 375 CSS pixels; berry placement and all three blankets rendered in a vertical layout. Desktop review verified readable groups and restored full-opacity berries after success. Browser error logs were empty. Saved screenshots: `artifacts/learning-center-library.png`, `artifacts/learning-center-equal-groups.png`, `artifacts/learning-center-mobile.png`. Viewport override reset, temporary tab closed, and preview server stopped.
+- This update is local and uncommitted. No Firebase rules, economy schema or server-side concept-history changes. Cloud hint uses the existing authorized hint operation; a real cloud-browser lesson round trip, physical touchscreen/audio acceptance, and learner/educator review remain unexecuted. Additional concepts are future work.
+
 ## Approved production release — October 30, 2026
 
 The owner approved production publication after local review. `firebase deploy --only firestore:rules --project math-quest-2d6e5 --non-interactive` compiled and successfully released the tested pack/ownership and saved-voice rules. The app release-branch push follows this rules deployment; GitHub Actions must validate, publish Hosting and verify the released files before Hosting success is claimed. Earlier local-only statements below describe the review stage.

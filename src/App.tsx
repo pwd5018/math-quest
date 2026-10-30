@@ -61,8 +61,10 @@ import AdventureEnding from "./components/AdventureEnding";
 import { CostumePacks } from "./components/CostumePacks";
 import { buyPack, type PackSetting } from "./lib/packs";
 const PipPlayground = lazy(() => import("./components/PipPlayground"));
+const LearningCenter = lazy(() => import("./components/LearningCenter"));
 import { changeAppearance } from "./lib/appearance";
 import { stopPipVoice } from "./lib/pipVoice";
+import { stopLessonNarration } from "./lib/narration";
 import type { CloudRepository } from "./lib/cloudRepository";
 import type { CloudSession } from "./lib/cloudModel";
 import {
@@ -72,7 +74,14 @@ import {
 } from "./components/Illustrations";
 
 type Page =
-  "map" | "practice" | "shop" | "badges" | "parent" | "studio" | "play";
+  | "map"
+  | "practice"
+  | "learn"
+  | "shop"
+  | "badges"
+  | "parent"
+  | "studio"
+  | "play";
 type Run = {
   id: string;
   skill: Skill;
@@ -154,6 +163,7 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
   const [toast, setToast] = useState(loaded.warning || "");
   const [parentGate, setParentGate] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  const [lessonFromPractice, setLessonFromPractice] = useState(false);
   useEffect(() => {
     const mobile = window.matchMedia("(max-width: 580px)");
     if (!mobileNav || !mobile.matches) return;
@@ -229,7 +239,10 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
   });
   async function update(next: State): Promise<boolean> {
     // Silence is immediate, even while a cloud preference write is pending.
-    if (next.appearance.voice === "off") stopPipVoice();
+    if (next.appearance.voice === "off") {
+      stopPipVoice();
+      stopLessonNarration();
+    }
     if (cloud) {
       const ok = await cloud.onChange(async () => {
         if (
@@ -264,6 +277,7 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
     }
   }
   function navigate(next: Page) {
+    if (next === "learn") setLessonFromPractice(false);
     setPage(next);
     setMobileNav(false);
     window.scrollTo(0, 0);
@@ -322,6 +336,26 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
     navigate("practice");
   }
   const q = run && !run.finished ? run.question : null;
+  async function teachConcept() {
+    if (!q || !run || feedback === "right") return;
+    const saved = await update({
+      ...state,
+      events: [
+        ...state.events,
+        {
+          questionId: q.id,
+          sessionId: run.id,
+          question: { a: q.a, b: q.b, symbol: q.symbol, skill: q.skill },
+          kind: "hint",
+          at: now(),
+        },
+      ],
+    });
+    if (!saved) return;
+    setHints((h) => h + 1);
+    navigate("learn");
+    setLessonFromPractice(true);
+  }
   // Freeze the current question after recording, so advancing difficulty cannot change its explanation.
   const [solvedQuestion, setSolvedQuestion] = useState<typeof q>(
     cloud?.repo.active?.answered ? cloud.repo.active.question : null,
@@ -489,6 +523,7 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
   const nav = [
     { id: "map", icon: Map, name: "My adventure" },
     { id: "practice", icon: BookOpen, name: "Practice trail" },
+    { id: "learn", icon: Lightbulb, name: "Learning Center" },
     { id: "shop", icon: ShoppingBag, name: "Treasure shop" },
     { id: "badges", icon: Award, name: "My achievements" },
     { id: "studio", icon: Shirt, name: "Pip’s dressing room" },
@@ -1125,6 +1160,20 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
                             ? "Show the hint again"
                             : "A little hint, please"}
                         </button>
+                        {(q.skill === "multiplication" ||
+                          q.skill === "division") &&
+                          feedback !== "right" && (
+                            <button
+                              className="hint-button"
+                              onClick={() => void teachConcept()}
+                            >
+                              <BookOpen size={17} />
+                              Teach me this ·{" "}
+                              {q.skill === "division"
+                                ? "Division"
+                                : "Multiplication"}
+                            </button>
+                          )}
                         {(hints > 0 || feedback === "wrong") &&
                           feedback !== "right" && (
                             <div className="hint-panel">
@@ -1458,6 +1507,31 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
                 </div>
               </section>
             </>
+          )}
+          {page === "learn" && (
+            <Suspense
+              fallback={
+                <p className="panel">Pip’s getting the lesson ready…</p>
+              }
+            >
+              <LearningCenter
+                look={state.appearance}
+                fromPractice={lessonFromPractice}
+                initialSubject={
+                  lessonFromPractice && run?.skill === "division"
+                    ? "division"
+                    : "multiplication"
+                }
+                storageScope={cloud ? cloud.repo.root : "demo"}
+                onReturn={() =>
+                  navigate(
+                    lessonFromPractice && run && !run.finished
+                      ? "practice"
+                      : "map",
+                  )
+                }
+              />
+            </Suspense>
           )}
           {page === "play" && (
             <Suspense
