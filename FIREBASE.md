@@ -54,6 +54,10 @@ npm.cmd run build
 
 ## Build and publish
 
+### Learning-note persistence: approved October 31, 2026
+
+The Learning Center now writes family-scoped `lessonNotes`, immutable `lessonEvents` and `lessonImports` documents. Deploy `firestore.spark.rules` before publishing the updated client, using the same rules-first commands below. Existing wallet/mastery data requires no migration. Earlier profile-scoped device notes import automatically when Learning Center opens; pending observations retain stable identities in a local retry queue. Demo data remains isolated. No Functions deployment or expanded CI permissions are needed. The app shows a server-update notice and queues notes if the new collections are unavailable; reload after the rules update to reattach listeners. The owner approved deployment and push October 31, 2026. Production rules were deployed successfully and read back with exact normalized source equality (SHA-256 acbbd963c20754831efd8e7d19b8f0bfa54d0c6450fb34fe7d66a43b0e729cff). Hosting publication follows the release-branch push and must pass workflow verification.
+
 ### Costume-pack update: deploy rules before Hosting
 
 The React Three Fiber/pack update adds bounded per-child `packCatalog/{packId}` configuration and immutable `cosmetics/{packId}` ownership. Parents configure price/enabled state; members buy with an atomic wallet/`pack-<id>` ledger/ownership transaction. Security rules check price, enabled state, one-time ownership, wallet conservation and ownership before equipping special costumes. Existing profile documents do not require a schema migration, and existing family rewards/goals retain their behavior.

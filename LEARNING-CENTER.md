@@ -22,11 +22,15 @@ Every concept follows **Watch Pip → Build together → Try yourself → Connec
 
 Multiplication/division questions offer **Teach me this** for their respective subject. This records an ordinary practice hint before leaving the question. The subject catalogue opens, allowing the child to choose a concept. Returning retains the run, question, typed answer and hint/retry state. If saving the hint fails, the app does not leave the question. Other practice skills have no misleading link to unrelated lessons.
 
-## Device notes and earlier saves
+## Family notes and earlier saves
 
-Version 2 notes store bounded exploration, supported-check and independent-check counts per known lesson ID under a profile-scoped localStorage key. Separate observations coexist; no single check is called mastery. Unknown IDs/fields and invalid counters are discarded. Storage failure leaves the lessons usable with a visible notice. These notes are device-only, are not secure assessments, and are separate from Firebase wallet/mastery/rewards.
+Firebase mode stores bounded exploration, supported-check and independent-check counts under `familiesV2/{owner}/children/{child}/lessonNotes/{lessonId}`. Live listeners update other approved devices. Each observation has an immutable `lessonEvents/{operationId}` record and updates its concept counter atomically. Stable operation identities prevent retries from counting twice; concurrent counter conflicts are retried only when a permitted read confirms that another event changed the counter. Only the verified owning parent or an approved, unexpired, unrevoked child device can read or record notes. These are observations, not secure assessments, and never award coins or change practice mastery.
 
-The original combined-picnic notes remain under their original version 1 key. An expandable legacy summary displays them without falsely crediting the eight new concepts. No prior record is deleted or silently reassigned.
+Earlier version 2 notes are imported once per browser/profile using stable migration identities. Original version 1 combined-picnic notes are preserved in `lessonImports/{deviceId}` and shown separately, without falsely crediting the eight new concepts. Counts from separate devices are added; old device data remains intact. Demo notes use a separate scope and are not imported into a family profile.
+
+New Firebase observations first enter a profile-scoped localStorage retry queue. Failed saves survive reload; the screen shows pending notes, storage failures and a Retry sync control. LocalStorage is a temporary queue and migration source, not the authoritative cloud history. If browser storage is unavailable, keep the page open until syncing succeeds. The isolated demo still saves only on its current device. Unknown IDs and invalid counters are discarded; queues and counters are bounded.
+
+The owner approved this update October 31, 2026. Its tested Firestore rules were deployed and read back before the app push; Hosting publication uses the existing GitHub workflow. With older rules, ordinary practice still works and Learning Center queues notes with a server-update notice. Reload after rules deployment to reconnect listeners. Existing device notes migrate when Learning Center next opens in that browser/profile; a device that never reopens cannot upload its old notes. See FIREBASE.md for the release sequence.
 
 ## Interaction and sound
 
@@ -40,6 +44,6 @@ To regenerate changed directions after editing lesson text, run `node --experime
 
 ## Structure and next concepts
 
-The catalogue, mathematical prompts/answers, grading and note restoration live in src/lib/lessons.ts. The lesson journey, visual manipulatives and subject catalogue are separate components. No backend/schema/rules changes are required for this local slice.
+The catalogue, mathematical prompts/answers, grading and note restoration live in src/lib/lessons.ts. The lesson journey, visual manipulatives and subject catalogue are separate components. src/lib/useLessonJournal.ts manages device imports and durable pending saves; CloudRepository and firestore.spark.rules provide family persistence and authorization. No paid backend or Functions deployment is required.
 
-Next multiplication concepts: turning arrays around, zero/one, breaking apart facts, fact patterns, stories and missing factors. Next division concepts: equal jumps/subtraction, related multiplication facts, special cases, leftovers, story interpretation and missing quantities. Addition/subtraction, place value, fractions, cloud concept history and parent lesson configuration are later expansions. The owner approved production publication on October 30, 2026. Publication uses the existing release-branch GitHub workflow with validation and byte-for-byte Hosting verification; model files remain local.
+Next multiplication concepts: turning arrays around, zero/one, breaking apart facts, fact patterns, stories and missing factors. Next division concepts: equal jumps/subtraction, related multiplication facts, special cases, leftovers, story interpretation and missing quantities. Addition/subtraction, place value, fractions and parent lesson configuration are later expansions. The earlier lessons/narration release was approved October 30, 2026; this persistence update was approved October 31, 2026 with rules deployed first. Publication uses the existing release-branch GitHub workflow with validation and byte-for-byte Hosting verification; model files remain local.

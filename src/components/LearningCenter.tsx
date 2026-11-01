@@ -1,16 +1,8 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen } from "lucide-react";
 import type { Appearance } from "../lib/appearance";
-import {
-  lessons,
-  lessonById,
-  observeLesson,
-  restoreJournal,
-  type Subject,
-  type LessonJournal,
-  type LessonObservation,
-} from "../lib/lessons";
-import { restoreConceptNote } from "../lib/concepts";
+import { lessons, lessonById, type Subject } from "../lib/lessons";
+import { useLessonJournal, type LessonCloud } from "../lib/useLessonJournal";
 import { Companion } from "./Companion";
 import { Berry } from "./LessonVisuals";
 import ConceptLesson from "./ConceptLesson";
@@ -22,55 +14,56 @@ export default function LearningCenter({
   storageScope,
   onReturn,
   initialSubject = "multiplication",
+  cloud,
 }: {
   look: Appearance;
   fromPractice: boolean;
   storageScope: string;
   onReturn: () => void;
   initialSubject?: Subject;
+  cloud?: LessonCloud;
 }) {
-  const key = "math-quest-lessons-v2:" + storageScope;
-  const [journal, setJournal] = useState<LessonJournal>(() => {
-    try {
-      return restoreJournal(JSON.parse(localStorage.getItem(key) || "null"));
-    } catch {
-      return {};
-    }
-  });
-  const [legacy] = useState(() => {
-    try {
-      return restoreConceptNote(
-        JSON.parse(
-          localStorage.getItem("math-quest-concepts-v1:" + storageScope) ||
-            "null",
-        ),
-      );
-    } catch {
-      return restoreConceptNote(null);
-    }
-  });
+  const sync = useLessonJournal(storageScope, cloud);
+  const { journal, legacy, record, warning } = sync;
   const [subject, setSubject] = useState<Subject>(initialSubject),
-    [active, setActive] = useState<string | null>(null),
-    [warning, setWarning] = useState("");
+    [active, setActive] = useState<string | null>(null);
   const selected = active ? lessonById(active) : undefined;
-  function record(id: string, kind: keyof LessonObservation) {
-    const next = observeLesson(journal, id, kind);
-    setJournal(next);
-    try {
-      localStorage.setItem(key, JSON.stringify(next));
-      setWarning("");
-    } catch {
-      setWarning(
-        "Learning notes couldn’t be saved. You can still explore every lesson.",
-      );
-    }
-  }
   function launch(id: string) {
     record(id, "explored");
     setActive(id);
   }
   return (
     <section className="learning-center">
+      {cloud && (
+        <div className="lesson-notes" role="status">
+          <div>
+            <strong>
+              {!sync.available
+                ? "Learning sync needs the server update."
+                : sync.pending
+                  ? `Syncing ${sync.pending} learning notes…`
+                  : !sync.migrated
+                    ? "Bringing earlier device notes into your family profile…"
+                    : "Learning notes are saved to your family profile."}
+            </strong>
+            <p>
+              {sync.available
+                ? "Use another approved device to continue with the same concept history."
+                : "You can keep learning. Notes stay queued here until syncing is available."}
+            </p>
+            {(warning || !sync.available) && (
+              <button
+                className="secondary"
+                onClick={
+                  sync.available ? sync.retry : () => window.location.reload()
+                }
+              >
+                {sync.available ? "Retry sync" : "Reload sync"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {fromPractice && (
         <div className="lesson-practice-return">
           <button className="secondary" onClick={onReturn}>
@@ -210,8 +203,10 @@ export default function LearningCenter({
                 whole concept as mastered.
               </p>
               <small>
-                Saved on this device for this profile. These notes don’t award
-                coins, change practice mastery or sync to other devices.
+                {cloud
+                  ? "Saved to your family profile after syncing. "
+                  : "Saved on this device only. "}
+                These observations don’t award coins or change practice mastery.
               </small>
               {legacy.completed > 0 && (
                 <details className="legacy-concept-notes">

@@ -48,6 +48,9 @@ export type LearningEvent = {
   at: string;
 };
 export type State = {
+  lessonNotes?: import("./lessons").LessonJournal;
+  lessonNotesSupport?: boolean;
+  lessonLegacy?: import("./concepts").ConceptNote[];
   ownedPacks?: string[];
   packSupport?: boolean;
   packSettings?: Record<string, import("./packs").PackSetting>;

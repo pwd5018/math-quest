@@ -22,6 +22,7 @@ import {
   writeBatch,
   Timestamp,
   serverTimestamp,
+  deleteDoc,
 } from "firebase/firestore";
 import { CloudRepository } from "../src/lib/cloudRepository";
 import * as cloudModel from "../src/lib/cloudModel";
@@ -72,6 +73,125 @@ afterAll(async () => {
   await env?.cleanup();
 });
 describe("Spark-only authorization and atomic economy", () => {
+  it("persists concept notes across repositories and updates another device without touching the wallet", async () => {
+    const { p, child } = await family();
+    const before = child.wallet.balance;
+    let stop = () => {};
+    const seen = new Promise<void>((resolve, reject) => {
+      stop = child.subscribe(() => {
+        if (child.state.lessonNotes?.["equal-groups"]?.independent === 1)
+          resolve();
+      }, reject);
+    });
+    try {
+      await p.recordLesson("equal-groups", "independent", "lesson-check-one");
+      await seen;
+    } finally {
+      stop();
+    }
+    const fresh = new CloudRepository(child.db, "parent-a");
+    await fresh.reload();
+    expect(fresh.state.lessonNotes?.["equal-groups"]).toEqual({
+      explored: 0,
+      supported: 0,
+      independent: 1,
+    });
+    expect(fresh.wallet.balance).toBe(before);
+    expect(fresh.state.progress).toEqual(child.state.progress);
+    await assertFails(
+      getDoc(
+        doc(
+          env.authenticatedContext("outsider", childClaims).firestore(),
+          `${root}/lessonNotes/equal-groups`,
+        ),
+      ),
+    );
+  });
+  it("handles concurrent observations and repeated operation identities without losing or doubling counts", async () => {
+    const { p, child } = await family();
+    const results = await Promise.allSettled([
+      p.recordLesson("equal-sharing", "explored", "device-one"),
+      child.recordLesson("equal-sharing", "explored", "device-two"),
+      child.recordLesson("equal-sharing", "explored", "device-one"),
+    ]);
+    expect(results.map((r) => r.status)).toEqual([
+      "fulfilled",
+      "fulfilled",
+      "fulfilled",
+    ]);
+    await p.reload();
+    expect(p.state.lessonNotes?.["equal-sharing"]?.explored).toBe(2);
+    await child.recordLesson("equal-sharing", "supported", "supported-one");
+    await p.reload();
+    expect(p.state.lessonNotes?.["equal-sharing"]?.supported).toBe(1);
+  });
+  it("imports device and legacy notes once, preserving previous cloud observations", async () => {
+    const { p, child } = await family();
+    await p.recordLesson("equal-groups", "explored", "before-import");
+    const notes = {
+      "equal-groups": { explored: 3, supported: 1, independent: 2 },
+    };
+    const legacy = {
+      visits: 2,
+      completed: 1,
+      multiplication: "with-help" as const,
+      sharing: "independent" as const,
+    };
+    await Promise.all([
+      child.importLessonNotes(notes, "local-device", legacy),
+      p.importLessonNotes(notes, "local-device", legacy),
+    ]);
+    await child.importLessonNotes(notes, "local-device", legacy);
+    await p.reload();
+    expect(p.state.lessonNotes?.["equal-groups"]).toEqual({
+      explored: 4,
+      supported: 1,
+      independent: 2,
+    });
+    expect(p.state.lessonLegacy).toEqual([legacy]);
+    await child.importLessonNotes(
+      { "equal-groups": { explored: 2, supported: 0, independent: 0 } },
+      "other-device",
+      { ...legacy, completed: 0 },
+    );
+    await p.reload();
+    expect(p.state.lessonNotes?.["equal-groups"]?.explored).toBe(6);
+  });
+  it("rejects forged, uncoupled and mutable lesson observations and revoked devices", async () => {
+    const { p, child } = await family();
+    await assertFails(
+      setDoc(child.ref("lessonNotes", "equal-groups"), {
+        explored: 99,
+        supported: 0,
+        independent: 0,
+        lastEvent: "forged",
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      setDoc(child.ref("lessonEvents", "forged"), {
+        lessonId: "equal-groups",
+        kind: "independent",
+        delta: { explored: 0, supported: 0, independent: 99 },
+        at: serverTimestamp(),
+      }),
+    );
+    await expect(
+      child.recordLesson("unknown", "explored", "bad"),
+    ).rejects.toThrow();
+    await child.recordLesson("equal-groups", "explored", "valid-event");
+    await assertFails(
+      updateDoc(child.ref("lessonEvents", "valid-event"), {
+        kind: "independent",
+      }),
+    );
+    await assertFails(deleteDoc(child.ref("lessonNotes", "equal-groups")));
+    await assertFails(
+      updateDoc(child.ref("lessonImports", "missing"), { legacy: {} }),
+    );
+    await updateDoc(doc(p.db, "sparkDevices/child-a"), { revoked: true });
+    await assertFails(getDoc(child.ref("lessonNotes", "equal-groups")));
+  });
   it("persists the new creature voices without changing the wallet or accepting arbitrary styles", async () => {
     const { child } = await family();
     const balance = child.wallet.balance;
@@ -87,7 +207,7 @@ describe("Spark-only authorization and atomic economy", () => {
       updateDoc(doc(child.db, root), { "appearance.voice": "unknown" }),
     );
   });
-  it("keeps normal practice available when pack collections are not deployed yet", async () => {
+  it("keeps normal practice available when optional pack and lesson collections are not deployed yet", async () => {
     const current = readFileSync("firestore.spark.rules", "utf8");
     const rollout = current
       .replace(
@@ -97,6 +217,14 @@ describe("Spark-only authorization and atomic economy", () => {
       .replace(
         /match \/cosmetics\/\{id\} \{\s*allow read: if member\(owner,child\);/,
         "match /cosmetics/{id} { allow read: if false;",
+      )
+      .replace(
+        /match \/lessonNotes\/\{id\} \{\s*allow read: if member\(owner,child\);/,
+        "match /lessonNotes/{id} { allow read: if false;",
+      )
+      .replace(
+        /match \/lessonImports\/\{id\} \{\s*allow read: if member\(owner,child\);/,
+        "match /lessonImports/{id} { allow read: if false;",
       );
     expect(rollout).not.toBe(current);
     const staged = await initializeTestEnvironment({
@@ -111,6 +239,8 @@ describe("Spark-only authorization and atomic economy", () => {
       await p.initialize("Explorer", false);
       await p.reload();
       expect(p.state.packSupport).toBe(false);
+      expect(p.state.lessonNotesSupport).toBe(false);
+      expect(p.state.lessonNotes).toEqual({});
       expect(p.state.ownedPacks).toEqual([]);
       await p.start("multiplication");
       await p.answer(String(p.active!.question.answer));

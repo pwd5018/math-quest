@@ -143,7 +143,38 @@ service cloud.firestore {
    allow update: if parent(resource.data.parentUid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked','expiresAt'])
     && request.resource.data.revoked is bool && request.resource.data.expiresAt<=request.time+duration.value(31,'d');
   }
+  function lessonId(id) { return id in ['equal-groups','repeated-addition','skip-counting','multiplication-arrays','equal-sharing','make-groups','division-equations','division-arrays']; }
+  function lessonCounts(d) { return d is map && d.keys().hasOnly(['explored','supported','independent']) && d.keys().size()==3
+   && whole(d.explored,0,9999) && whole(d.supported,0,9999) && whole(d.independent,0,9999); }
+  function lessonNote(d) { return d.keys().hasOnly(['explored','supported','independent','lastEvent','updatedAt']) && d.keys().size()==5
+   && whole(d.explored,0,9999) && whole(d.supported,0,9999) && whole(d.independent,0,9999) && short(d.lastEvent,140) && d.updatedAt==request.time; }
+  function lessonEvent(o,c,e,id) {
+   let old=exists(dp(o,c,'lessonNotes',e.lessonId))?get(dp(o,c,'lessonNotes',e.lessonId)).data:{'explored':0,'supported':0,'independent':0};
+   let after=getAfter(dp(o,c,'lessonNotes',e.lessonId)).data;
+   return e.keys().hasOnly(['lessonId','kind','delta','at']) && e.keys().size()==4 && short(id,140) && lessonId(e.lessonId)
+    && e.at==request.time && lessonCounts(e.delta) && e.kind in ['explored','supported','independent','import']
+    && (e.kind=='import' || (e.delta.explored==(e.kind=='explored'?1:0) && e.delta.supported==(e.kind=='supported'?1:0) && e.delta.independent==(e.kind=='independent'?1:0)))
+    && lessonNote(after) && after.lastEvent==id && after.explored==min(9999,old.explored+e.delta.explored)
+    && after.supported==min(9999,old.supported+e.delta.supported) && after.independent==min(9999,old.independent+e.delta.independent);
+  }
+  function legacyLesson(d) { return d is map && d.keys().hasOnly(['visits','completed','multiplication','sharing']) && d.keys().size()==4
+   && whole(d.visits,0,9999) && whole(d.completed,0,9999) && d.multiplication in ['not-tried','with-help','independent'] && d.sharing in ['not-tried','with-help','independent']; }
   match /familiesV2/{owner}/children/{child} {
+   match /lessonNotes/{id} {
+    allow read: if member(owner,child);
+    allow create,update: if member(owner,child) && lessonId(id) && lessonNote(request.resource.data)
+     && !exists(dp(owner,child,'lessonEvents',request.resource.data.lastEvent))
+     && getAfter(dp(owner,child,'lessonEvents',request.resource.data.lastEvent)).data.lessonId==id;
+   }
+   match /lessonEvents/{id} {
+    allow read: if member(owner,child);
+    allow create: if member(owner,child) && lessonEvent(owner,child,request.resource.data,id);
+   }
+   match /lessonImports/{id} {
+    allow read: if member(owner,child);
+    allow create: if member(owner,child) && short(id,80) && request.resource.data.keys().hasOnly(['legacy','at']) && request.resource.data.keys().size()==2
+     && legacyLesson(request.resource.data.legacy) && request.resource.data.at==request.time;
+   }
    allow get: if member(owner,child);
    allow list: if parent(owner);
    allow create: if parent(owner) && child=='explorer' && profile(request.resource.data) && request.resource.data.createdAt==request.time && outfitPack(request.resource.data.appearance.outfit)=='';

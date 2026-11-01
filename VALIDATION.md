@@ -1,5 +1,13 @@
 # Executed validation
 
+## Learning-note database persistence — October 30–31, 2026
+
+- Added family-scoped per-concept observations, immutable operation identities, live cross-device updates and one-time device/legacy-note imports. Observations do not change wallet, rewards or practice mastery. Demo data remains isolated.
+- All **93 unit tests** and **30 Firestore emulator tests** passed. Database checks cover fresh-repository persistence, live updates to a second repository, simultaneous observations, duplicate identities, simultaneous/repeated imports, forged/uncoupled writes, unauthorized access, revoked devices and practice compatibility with unavailable optional collections. Initial concurrent-save failures were corrected with bounded, evidence-based conflict recovery; the final full suite passed.
+- TypeScript, production build, formatting and diff-whitespace checks passed. Existing Vite large-chunk advisories remain.
+- Browser verification exercised the actual Learning Center and journal hook under React StrictMode with a synthetic persistence/network adapter: imported counts 3/1/2 once; queued an observation while the adapter failed; reloaded with the queue intact; restored the adapter and retried; observed 4/1/2, one import and one saved event after another reload. This browser check simulates the network boundary; actual database behavior is covered separately by the emulator suite. Screenshot: `artifacts/lesson-sync-recovered.png`. Temporary browser fixture and preview server were removed/stopped.
+- Local tests used no production family data. The owner authorized deploy/push October 31, 2026. Rules deployed successfully to math-quest-2d6e5; active ruleset e4b241e1-7147-4c88-b816-f7456b30222a was read back and matched the tested source exactly after newline normalization (SHA-256 acbbd963c20754831efd8e7d19b8f0bfa54d0c6450fb34fe7d66a43b0e729cff). Sanitized receipt: artifacts/learning-rules-release.json. The release-branch push triggers Hosting publication and exact-file verification; workflow completion is checked separately. Existing device notes import when Learning Center next opens on that device/profile.
+
 ## Approved Learning Center release — October 30, 2026
 
 The owner approved pushing the reviewed eight-lesson Learning Center and Kokoro Heart narration. This release includes 40 generated direction recordings, whose source models remain outside the repository. No database/rules, Auth, IAM or billing changes are needed. The existing release-branch workflow validates, publishes Hosting and verifies every published file. Earlier local-only statements below describe pre-publication review stages; final deployment success requires the workflow result.

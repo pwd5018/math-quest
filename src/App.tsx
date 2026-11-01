@@ -1515,7 +1515,27 @@ export default function App({ cloud }: { cloud?: CloudBridge }) {
               }
             >
               <LearningCenter
+                key={cloud?.repo.root ?? "demo"}
                 look={state.appearance}
+                cloud={
+                  cloud
+                    ? {
+                        journal: state.lessonNotes ?? {},
+                        legacy: state.lessonLegacy ?? [],
+                        available: state.lessonNotesSupport ?? false,
+                        record: async (id, kind, eventId) => {
+                          await cloud.repo.recordLesson(id, kind, eventId);
+                        },
+                        importNotes: async (journal, deviceId, legacy) => {
+                          await cloud.repo.importLessonNotes(
+                            journal,
+                            deviceId,
+                            legacy,
+                          );
+                        },
+                      }
+                    : undefined
+                }
                 fromPractice={lessonFromPractice}
                 initialSubject={
                   lessonFromPractice && run?.skill === "division"

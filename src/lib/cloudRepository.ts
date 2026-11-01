@@ -20,6 +20,13 @@ import {
 } from "firebase/firestore";
 import { packs, validatePackSetting, type PackSetting } from "./packs";
 import {
+  lessonById,
+  restoreJournal,
+  type LessonJournal,
+  type LessonObservation,
+} from "./lessons";
+import { restoreConceptNote, type ConceptNote } from "./concepts";
+import {
   blankCloudState,
   CHILD_ID,
   cloudAward,
@@ -136,6 +143,8 @@ export class CloudRepository {
       "sessions",
       "packCatalog",
       "cosmetics",
+      "lessonNotes",
+      "lessonImports",
     ])
       unsubs.push(
         onSnapshot(
@@ -147,7 +156,12 @@ export class CloudRepository {
           () => void refresh(),
           (error) => {
             if (
-              ["packCatalog", "cosmetics"].includes(kind) &&
+              [
+                "packCatalog",
+                "cosmetics",
+                "lessonNotes",
+                "lessonImports",
+              ].includes(kind) &&
               error.code === "permission-denied"
             )
               return;
@@ -209,7 +223,12 @@ export class CloudRepository {
     const readPacks = async (kind: string) => {
       try {
         return await getDocs(
-          query(collection(this.db, `${this.root}/${kind}`), limit(6)),
+          query(
+            collection(this.db, `${this.root}/${kind}`),
+            limit(
+              kind === "lessonNotes" ? 8 : kind === "lessonImports" ? 100 : 6,
+            ),
+          ),
         );
       } catch (error) {
         if ((error as { code?: string }).code === "permission-denied")
@@ -217,23 +236,35 @@ export class CloudRepository {
         throw error;
       }
     };
-    const [p, w, progress, rewards, facts, runtime, catalog, cosmetics] =
-      await Promise.all([
-        getDoc(doc(this.db, this.root)),
-        getDoc(this.ref("wallet", "current")),
-        getDocs(collection(this.db, `${this.root}/progress`)),
-        getDocs(collection(this.db, `${this.root}/rewards`)),
-        getDocs(
-          query(
-            collection(this.db, `${this.root}/facts`),
-            orderBy("last", "desc"),
-            limit(1000),
-          ),
+    const [
+      p,
+      w,
+      progress,
+      rewards,
+      facts,
+      runtime,
+      catalog,
+      cosmetics,
+      lessonNotes,
+      lessonImports,
+    ] = await Promise.all([
+      getDoc(doc(this.db, this.root)),
+      getDoc(this.ref("wallet", "current")),
+      getDocs(collection(this.db, `${this.root}/progress`)),
+      getDocs(collection(this.db, `${this.root}/rewards`)),
+      getDocs(
+        query(
+          collection(this.db, `${this.root}/facts`),
+          orderBy("last", "desc"),
+          limit(1000),
         ),
-        getDoc(this.ref("runtime", "current")),
-        readPacks("packCatalog"),
-        readPacks("cosmetics"),
-      ]);
+      ),
+      getDoc(this.ref("runtime", "current")),
+      readPacks("packCatalog"),
+      readPacks("cosmetics"),
+      readPacks("lessonNotes"),
+      readPacks("lessonImports"),
+    ]);
     if (!p.exists() || !w.exists())
       throw new Error(
         "This family profile is not ready. Ask your parent to finish setup.",
@@ -284,6 +315,15 @@ export class CloudRepository {
       ...blankCloudState(),
       ...p.data(),
       packSupport: !!catalog && !!cosmetics,
+      lessonNotesSupport: !!lessonNotes && !!lessonImports,
+      lessonNotes: restoreJournal(
+        Object.fromEntries(
+          (lessonNotes?.docs ?? []).map((d) => [d.id, d.data()]),
+        ),
+      ),
+      lessonLegacy: (lessonImports?.docs ?? []).map((d) =>
+        restoreConceptNote(d.data().legacy),
+      ),
       ownedPacks: cosmetics?.docs.map((d) => d.id) ?? [],
       packSettings: Object.fromEntries(
         (catalog?.docs ?? []).map((d) => [
@@ -760,6 +800,119 @@ export class CloudRepository {
         updatedAt: serverTimestamp(),
       });
     });
+    await this.reload();
+  }
+  async recordLesson(
+    id: string,
+    kind: keyof LessonObservation,
+    eventId: string = crypto.randomUUID(),
+    delta?: LessonObservation,
+  ) {
+    if (
+      !lessonById(id) ||
+      !["explored", "supported", "independent"].includes(kind) ||
+      !/^[A-Za-z0-9-]{1,140}$/.test(eventId)
+    )
+      throw new Error("Invalid learning observation.");
+    const amounts = delta
+      ? restoreJournal({ [id]: delta })[id]
+      : {
+          explored: kind === "explored" ? 1 : 0,
+          supported: kind === "supported" ? 1 : 0,
+          independent: kind === "independent" ? 1 : 0,
+        };
+    const event = this.ref("lessonEvents", eventId),
+      note = this.ref("lessonNotes", id);
+    for (let conflict = 0; ; conflict++) {
+      let observed: string | undefined;
+      let readNote = false;
+      try {
+        await runTransaction(this.db, async (tx) => {
+          // Read the shared counter first so concurrent transactions acquire the
+          // same document locks in the same order, including duplicate events.
+          const old = await tx.get(note);
+          observed = old.data()?.lastEvent;
+          readNote = true;
+          const saved = await tx.get(event);
+          if (saved.exists()) {
+            if (
+              saved.data().lessonId !== id ||
+              saved.data().kind !== (delta ? "import" : kind)
+            )
+              throw new Error("Learning observation identity mismatch.");
+            return;
+          }
+          const previous = restoreJournal({ [id]: old.data() })[id] ?? {
+            explored: 0,
+            supported: 0,
+            independent: 0,
+          };
+          tx.set(event, {
+            lessonId: id,
+            kind: delta ? "import" : kind,
+            delta: amounts,
+            at: serverTimestamp(),
+          });
+          tx.set(note, {
+            explored: Math.min(9999, previous.explored + amounts.explored),
+            supported: Math.min(9999, previous.supported + amounts.supported),
+            independent: Math.min(
+              9999,
+              previous.independent + amounts.independent,
+            ),
+            lastEvent: eventId,
+            updatedAt: serverTimestamp(),
+          });
+        });
+        break;
+      } catch (error) {
+        // Rules can reject a stale getAfter() comparison before the SDK reports
+        // a transaction conflict. Retry only when a permitted read proves that
+        // another observation changed the counter after our transaction read.
+        if (
+          conflict >= 4 ||
+          !readNote ||
+          (error as { code?: string }).code !== "permission-denied" ||
+          (await getDoc(note)).data()?.lastEvent === observed
+        )
+          throw error;
+      }
+    }
+    await this.reload();
+  }
+  async importLessonNotes(
+    journal: LessonJournal,
+    deviceId: string,
+    legacy: ConceptNote,
+  ) {
+    if (!/^[A-Za-z0-9-]{1,80}$/.test(deviceId))
+      throw new Error("Invalid learning migration identity.");
+    for (const [id, note] of Object.entries(restoreJournal(journal))) {
+      if (note.explored || note.supported || note.independent)
+        await this.recordLesson(
+          id,
+          "explored",
+          `import-${deviceId}-${id}`,
+          note,
+        );
+    }
+    const marker = this.ref("lessonImports", deviceId);
+    try {
+      await runTransaction(this.db, async (tx) => {
+        if (!(await tx.get(marker)).exists())
+          tx.set(marker, {
+            legacy: restoreConceptNote(legacy),
+            at: serverTimestamp(),
+          });
+      });
+    } catch (error) {
+      // Another mount/tab may finish this same immutable migration first.
+      if (
+        (error as { code?: string }).code !== "permission-denied" ||
+        !(await getDoc(marker)).exists()
+      )
+        throw error;
+    }
     await this.reload();
   }
   async preferences(next: State) {
